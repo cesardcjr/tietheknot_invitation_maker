@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useRef } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Countdown from "./Countdown";
 import { youtubeEmbedUrl } from "../utils/youtube";
 
@@ -6,6 +6,16 @@ function formatDate(value) {
   if (!value) return "Date to be announced";
   const [year, month, day] = String(value).slice(0, 10).split("-").map(Number);
   return new Intl.DateTimeFormat("en-PH", { dateStyle: "full" }).format(new Date(year, month - 1, day));
+}
+
+function formatTime(value) {
+  if (!value) return "Time to be announced";
+  const match = String(value).match(/^(\d{1,2}):(\d{2})/);
+  if (!match) return value;
+  const hours = Number(match[1]);
+  const minutes = match[2];
+  if (hours > 23) return value;
+  return `${hours % 12 || 12}:${minutes} ${hours >= 12 ? "PM" : "AM"}`;
 }
 
 function pageStyle(section = {}, image) {
@@ -20,6 +30,21 @@ function pageStyle(section = {}, image) {
 
 function Palette({ colors = [] }) {
   return <div className="dress-palette" aria-label="Suggested colors">{colors.map((color, index) => <span key={`${color}-${index}`} style={{ backgroundColor: color }} title={color} />)}</div>;
+}
+
+function CoverCarousel({ images = [] }) {
+  const [active, setActive] = useState(0);
+  useEffect(() => {
+    setActive(0);
+    if (images.length < 2) return undefined;
+    const timer = window.setInterval(() => setActive((index) => (index + 1) % images.length), 2000);
+    return () => window.clearInterval(timer);
+  }, [images.length]);
+  if (!images.length) return null;
+  return <div className="cover-carousel" aria-label="Wedding photo carousel">
+    <div className="cover-carousel-frame">{images.map((image, index) => <img key={image.publicId || image.secureUrl} className={index === active ? "active" : ""} src={image.secureUrl} alt={image.alt || `Wedding carousel image ${index + 1}`} />)}</div>
+    {images.length > 1 && <div className="cover-carousel-dots" aria-hidden="true">{images.map((image, index) => <span key={image.publicId || index} className={index === active ? "active" : ""} />)}</div>}
+  </div>;
 }
 
 export default function InvitationPreview({ design, event, guest, children, preview = false }) {
@@ -84,12 +109,14 @@ export default function InvitationPreview({ design, event, guest, children, prev
     <article ref={storyRef} className={`invitation-story font-${theme.fontPair || "classic"}${preview ? " is-preview" : ""}`} style={rootStyle}>
       <section className={`invitation-page cover-page font-${sections.cover?.fontFamily || "classic"}`} style={pageStyle(sections.cover, assets.coverImage?.secureUrl)}>
         <div className="page-layer" />
-        <div className="page-content cover-content">
-          <span className="cover-monogram" aria-hidden="true">TTK</span>
-          <p className="invitation-kicker">{content.headline || "We're getting married"}</p>
-          <h1>{content.coupleNames || "Our Wedding"}</h1>
-          <p className="invitation-date">{formatDate(event?.targetDate)}</p>
-          <span className="scroll-cue">Scroll to celebrate <b aria-hidden="true">↓</b></span>
+        <div className={`page-content cover-content${assets.coverCarousel?.length ? " has-carousel" : ""}`}>
+          <div className="cover-copy"><span className="cover-monogram" aria-hidden="true">TTK</span>
+            <p className="invitation-kicker">{content.headline || "We're getting married"}</p>
+            <h1>{content.coupleNames || "Our Wedding"}</h1>
+            <p className="invitation-date">{formatDate(event?.targetDate)}</p>
+            <span className="scroll-cue">Scroll to celebrate <b aria-hidden="true">↓</b></span>
+          </div>
+          <CoverCarousel images={assets.coverCarousel || []} />
         </div>
       </section>
 
@@ -107,8 +134,8 @@ export default function InvitationPreview({ design, event, guest, children, prev
       {(videoUrl || content.videoMessage) && <section className="story-section video-section"><div className="section-inner"><p className="section-kicker">A glimpse of our story</p>{content.videoMessage && <h2>{content.videoMessage}</h2>}{videoUrl && <div className="video-frame"><iframe src={videoUrl} title="A message from the couple" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen /></div>}</div></section>}
 
       <section className="story-section venue-section"><div className="section-inner"><p className="section-kicker">Where to celebrate</p><h2>Wedding Details</h2><div className="venue-card-grid">
-        <article className="venue-card"><span className="venue-icon" aria-hidden="true">♢</span><h3>Wedding Ceremony</h3><strong>{ceremonyVenue || "Venue to be announced"}</strong><p>{ceremonyAddress || "Address to follow"}</p><time>{content.ceremonyTime || "Time to be announced"}</time></article>
-        <article className="venue-card"><span className="venue-icon" aria-hidden="true">✦</span><h3>Reception</h3><strong>{receptionVenue || "Venue to be announced"}</strong><p>{receptionAddress || "Address to follow"}</p><time>{content.receptionTime || "Time to be announced"}</time></article>
+        <article className="venue-card"><span className="venue-icon" aria-hidden="true">♢</span><h3>Wedding Ceremony</h3><strong>{ceremonyVenue || "Venue to be announced"}</strong><p>{ceremonyAddress || "Address to follow"}</p><time dateTime={content.ceremonyTime || undefined}>{formatTime(content.ceremonyTime)}</time></article>
+        <article className="venue-card"><span className="venue-icon" aria-hidden="true">✦</span><h3>Reception</h3><strong>{receptionVenue || "Venue to be announced"}</strong><p>{receptionAddress || "Address to follow"}</p><time dateTime={content.receptionTime || undefined}>{formatTime(content.receptionTime)}</time></article>
       </div></div></section>
 
       <section className="story-section dress-section"><div className="section-inner"><p className="section-kicker">Celebrate in style</p><h2>Dress Code</h2>{content.dressCode && <p className="dress-intro">{content.dressCode}</p>}<div className="dress-card-grid">

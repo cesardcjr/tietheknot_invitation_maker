@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import QRCode from "qrcode";
 import InvitationPreview from "../components/InvitationPreview";
-import { GreetingStyleControls, ImageUploadField, PaletteEditor, SectionStyleControls } from "../components/DesignControls";
+import { CarouselUploadField, GreetingStyleControls, ImageUploadField, PaletteEditor, SectionStyleControls } from "../components/DesignControls";
 import { invitations, PLANNER_URL, PUBLIC_URL, uploadToCloudinary } from "../api";
 import { youtubeEmbedUrl } from "../utils/youtube";
 
@@ -151,6 +151,38 @@ export default function Builder({ session, onLogout }) {
     setNotice({ type: "success", text: "Image removed from the draft. Save to confirm." });
   };
 
+  const uploadCarousel = async (event) => {
+    const available = Math.max(0, 8 - (design.assets?.coverCarousel?.length || 0));
+    const files = [...(event.target.files || [])].slice(0, available);
+    event.target.value = "";
+    if (!files.length) return;
+    if (files.some((file) => !file.type.startsWith("image/") || file.size > 8 * 1024 * 1024)) {
+      return setNotice({ type: "error", text: "Use JPG, PNG, WebP or AVIF images no larger than 8 MB each." });
+    }
+    setBusy("upload-cover-carousel"); setNotice(null);
+    try {
+      const uploaded = [];
+      const rejected = [];
+      for (const file of files) {
+        const asset = await uploadToCloudinary(file);
+        asset.alt = `Wedding carousel image ${(design.assets?.coverCarousel?.length || 0) + uploaded.length + 1}`;
+        if (asset.width < asset.height * 1.2) rejected.push(asset.publicId);
+        else uploaded.push(asset);
+      }
+      if (rejected.length) setPendingDeletes((items) => [...new Set([...items, ...rejected])]);
+      if (uploaded.length) setDesign((current) => ({ ...current, assets: { ...current.assets, coverCarousel: [...(current.assets?.coverCarousel || []), ...uploaded].slice(0, 8) } }));
+      setNotice({ type: rejected.length ? "error" : "success", text: rejected.length ? `${rejected.length} image${rejected.length === 1 ? " was" : "s were"} skipped because carousel images must be landscape.` : `${uploaded.length} carousel image${uploaded.length === 1 ? "" : "s"} uploaded. Save the design to confirm.` });
+    } catch (err) { setNotice({ type: "error", text: friendlyError(err) }); }
+    finally { setBusy(""); }
+  };
+
+  const removeCarouselImage = (index) => {
+    const image = design.assets?.coverCarousel?.[index];
+    if (image?.publicId) setPendingDeletes((items) => [...new Set([...items, image.publicId])]);
+    setDesign((current) => ({ ...current, assets: { ...current.assets, coverCarousel: (current.assets?.coverCarousel || []).filter((_, itemIndex) => itemIndex !== index) } }));
+    setNotice({ type: "success", text: "Carousel image removed from the draft. Save to confirm." });
+  };
+
   const createInvite = async (guest) => {
     setBusy(`guest-${guest._id}`);
     try {
@@ -188,7 +220,7 @@ export default function Builder({ session, onLogout }) {
   const imageField = (assetKey, label) => <ImageUploadField id={`upload-${assetKey}`} label={label} asset={design.assets?.[assetKey]} busy={busy === `upload-${assetKey}`} onUpload={(event) => uploadAsset(assetKey, label, event)} onRemove={() => removeAsset(assetKey)} />;
 
   const editorFields = () => {
-    if (designSection === "cover") return <><div className="form-section"><h3>Cover content</h3><div className="field-grid"><label>Couple names<input value={design.content.coupleNames} maxLength="160" onChange={(e) => setContent("coupleNames", e.target.value)} /></label><label>Headline<input value={design.content.headline} maxLength="200" onChange={(e) => setContent("headline", e.target.value)} /></label></div></div><div className="form-section"><h3>Cover image</h3>{imageField("coverImage", "Wedding cover image")}</div><div className="form-section"><h3>Page appearance</h3><SectionStyleControls value={design.sections.cover} onChange={(value) => setSectionStyle("cover", value)} /><div className="theme-grid brand-colors"><label>Accent color<span className="color-control"><input type="color" value={design.theme.accent} onChange={(e) => setTheme("accent", e.target.value)} /><code>{design.theme.accent}</code></span></label><label>Text color<span className="color-control"><input type="color" value={design.theme.text} onChange={(e) => setTheme("text", e.target.value)} /><code>{design.theme.text}</code></span></label></div></div></>;
+    if (designSection === "cover") return <><div className="form-section"><h3>Cover content</h3><div className="field-grid"><label>Couple names<input value={design.content.coupleNames} maxLength="160" onChange={(e) => setContent("coupleNames", e.target.value)} /></label><label>Headline<input value={design.content.headline} maxLength="200" onChange={(e) => setContent("headline", e.target.value)} /></label></div></div><div className="form-section"><h3>Cover media</h3><div className="cover-media-grid"><div>{imageField("coverImage", "Wedding cover image")}</div><CarouselUploadField images={design.assets?.coverCarousel || []} busy={busy === "upload-cover-carousel"} onUpload={uploadCarousel} onRemove={removeCarouselImage} /></div></div><div className="form-section"><h3>Page appearance</h3><SectionStyleControls value={design.sections.cover} onChange={(value) => setSectionStyle("cover", value)} /><div className="theme-grid brand-colors"><label>Accent color<span className="color-control"><input type="color" value={design.theme.accent} onChange={(e) => setTheme("accent", e.target.value)} /><code>{design.theme.accent}</code></span></label><label>Text color<span className="color-control"><input type="color" value={design.theme.text} onChange={(e) => setTheme("text", e.target.value)} /><code>{design.theme.text}</code></span></label></div></div></>;
     if (designSection === "welcome") return <><div className="form-section"><h3>Second-page image</h3>{imageField("welcomeImage", "Welcome page image")}</div><div className="form-section"><h3>Welcome message</h3><label>Message<textarea rows="6" value={design.content.welcomeMessage} onChange={(e) => setContent("welcomeMessage", e.target.value)} /></label><p className="field-hint">The live countdown above this message uses the wedding date from your Planner event.</p></div><div className="form-section"><h3>Guest greeting</h3><p className="field-hint">Customize the “Dear [guest]” line independently from the welcome message.</p><GreetingStyleControls value={design.sections.greeting} onChange={(value) => setSectionStyle("greeting", value)} /></div><div className="form-section"><h3>Page appearance</h3><SectionStyleControls value={design.sections.welcome} onChange={(value) => setSectionStyle("welcome", value)} /></div></>;
     if (designSection === "video") return <div className="form-section no-border"><h3>Video message</h3><div className="field-stack"><label>Optional message above the video<textarea rows="4" value={design.content.videoMessage} onChange={(e) => setContent("videoMessage", e.target.value)} /></label><label>YouTube link<input type="url" placeholder="https://www.youtube.com/watch?v=…" value={design.content.youtubeUrl} onChange={(e) => setContent("youtubeUrl", e.target.value)} /><small>Supports YouTube watch, Shorts, embed, and youtu.be links.</small></label>{design.content.youtubeUrl && !youtubeEmbedUrl(design.content.youtubeUrl) && <p className="inline-error">This does not look like a supported YouTube link.</p>}</div></div>;
     if (designSection === "venue") return <><div className="form-section"><h3>Wedding Ceremony</h3><div className="field-grid"><label>Venue<input value={design.content.ceremonyVenue} onChange={(e) => setContent("ceremonyVenue", e.target.value)} /></label><label>Time<input type="time" value={design.content.ceremonyTime} onChange={(e) => setContent("ceremonyTime", e.target.value)} /></label><label className="full">Address<textarea rows="3" value={design.content.ceremonyAddress} onChange={(e) => setContent("ceremonyAddress", e.target.value)} /></label></div></div><div className="form-section"><h3>Reception</h3><div className="field-grid"><label>Venue<input value={design.content.receptionVenue} onChange={(e) => setContent("receptionVenue", e.target.value)} /></label><label>Time<input type="time" value={design.content.receptionTime} onChange={(e) => setContent("receptionTime", e.target.value)} /></label><label className="full">Address<textarea rows="3" value={design.content.receptionAddress} onChange={(e) => setContent("receptionAddress", e.target.value)} /></label></div></div></>;

@@ -9,6 +9,13 @@ export function ImageUploadField({ id, label, asset, busy, onUpload, onRemove })
   );
 }
 
+export function CarouselUploadField({ images = [], busy, onUpload, onRemove }) {
+  return <div className="carousel-control">
+    <div className="carousel-control-head"><div><strong>Landscape image carousel</strong><p>Upload up to 8 landscape images. Slides change every 2 seconds.</p></div><label className="button secondary file-button" htmlFor="upload-cover-carousel">{busy ? "Uploading…" : "Add images"}</label><input id="upload-cover-carousel" className="visually-hidden" type="file" accept="image/jpeg,image/png,image/webp,image/avif" multiple disabled={busy || images.length >= 8} onChange={onUpload} /></div>
+    {images.length ? <div className="carousel-control-grid">{images.map((image, index) => <figure key={image.publicId || image.secureUrl}><img src={image.secureUrl} alt={image.alt || `Carousel image ${index + 1}`} /><button type="button" aria-label={`Remove carousel image ${index + 1}`} onClick={() => onRemove(index)}>×</button><figcaption>Slide {index + 1}</figcaption></figure>)}</div> : <div className="carousel-control-empty">No carousel images yet</div>}
+  </div>;
+}
+
 export function SectionStyleControls({ value, onChange }) {
   const current = value || {};
   const set = (field, next) => onChange({ ...current, [field]: next });

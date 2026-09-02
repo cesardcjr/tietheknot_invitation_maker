@@ -13,6 +13,10 @@ export default function PublicInvitation({ token }) {
   useEffect(() => {
     publicInvitation.get(token).then(({ data: value }) => {
       setData(value);
+      const savedStatus = ["Accepted", "Declined"].includes(value.guest?.rsvpStatus) ? value.guest.rsvpStatus : "";
+      setChoice(savedStatus);
+      setRevealedStatus(savedStatus);
+      setDeclineReason(value.guest?.declineReason || "");
     }).catch((err) => setError(err.response?.data?.message || "This invitation is unavailable."));
   }, [token]);
 
