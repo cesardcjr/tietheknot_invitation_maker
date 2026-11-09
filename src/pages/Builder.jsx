@@ -1,3 +1,4 @@
+import RsvpInbox from "./RsvpInbox";
 import React, { useEffect, useState } from "react";
 import mapLocation from "../utils/mapLocation";
 import InvitationPreview from "../components/InvitationPreview";
@@ -65,7 +66,6 @@ export default function Builder({ session, onLogout }) {
   const [active, setActive] = useState("design");
   const [designSection, setDesignSection] = useState("cover");
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [search, setSearch] = useState("");
   const [notice, setNotice] = useState(null);
   const [busy, setBusy] = useState("");
   const [pendingDeletes, setPendingDeletes] = useState([]);
@@ -83,7 +83,6 @@ export default function Builder({ session, onLogout }) {
   };
 
   useEffect(() => { load(); }, []);
-  const filteredGuests = (data?.guests || []).filter((guest) => guest.name.toLowerCase().includes(search.toLowerCase()));
   const setContent = (field, value) => setDesign((current) => ({ ...current, content: { ...current.content, [field]: value } }));
   const setTheme = (field, value) => setDesign((current) => ({ ...current, theme: { ...current.theme, [field]: value } }));
   const setSectionStyle = (section, value) => setDesign((current) => ({ ...current, sections: { ...current.sections, [section]: value } }));
@@ -266,7 +265,7 @@ export default function Builder({ session, onLogout }) {
     if (designSection === "rsvp") return <div className="form-section no-border">
       <h3>Guest response and seating</h3>
       {headingField("seatingHeading", "Seating section title", "Seating Information")}
-      <p>Guests search their name and enter the private RSVP code from your guest roster. Seating assignments are provided at the venue.</p>
+      <p>Guests enter their full name and response. Review submissions and update the Guest List in Guest RSVP. Seating assignments are provided at the venue.</p>
     </div>;
     return <><div className="form-section"><h3>Closing image</h3>{imageField("closingImage", "Closing page image")}</div><div className="form-section"><h3>Final message</h3><div className="field-stack"><label>Closing message<textarea rows="5" value={design.content.closingMessage} onChange={(e) => setContent("closingMessage", e.target.value)} /></label><label>Contact note<input value={design.content.contactMessage} onChange={(e) => setContent("contactMessage", e.target.value)} /></label></div></div><div className="form-section"><h3>Page appearance</h3><SectionStyleControls value={design.sections.closing} onChange={(value) => setSectionStyle("closing", value)} /></div></>;
   };
@@ -280,7 +279,7 @@ export default function Builder({ session, onLogout }) {
       <aside className={`studio-sidebar${sidebarOpen ? " open" : ""}`}>
         <div className="studio-brand"><span className="studio-brand-mark">TTK</span><div><strong>TieTheKnot</strong><small>Invitation Studio</small></div></div>
         <div className="studio-user"><span>{session.user?.fullName?.charAt(0) || "U"}</span><div><strong>{session.user?.fullName}</strong><small>Event Planner</small></div></div>
-        <nav aria-label="Invitation Studio"><p>Workspace</p><button className={active === "design" ? "active" : ""} onClick={() => navigate("design")}><span aria-hidden="true">✦</span> Invitation Design</button><button className={active === "guests" ? "active" : ""} onClick={() => navigate("guests")}><span aria-hidden="true">♙</span> Guest RSVP <b>{data.guests.length}</b></button><button className={active === "settings" ? "active" : ""} onClick={() => navigate("settings")}><span aria-hidden="true">◉</span> Publishing</button></nav>
+        <nav aria-label="Invitation Studio"><p>Workspace</p><button className={active === "design" ? "active" : ""} onClick={() => navigate("design")}><span aria-hidden="true">✦</span> Invitation Design</button><button className={active === "guests" ? "active" : ""} onClick={() => navigate("guests")}><span aria-hidden="true">♙</span> Guest RSVP</button><button className={active === "settings" ? "active" : ""} onClick={() => navigate("settings")}><span aria-hidden="true">◉</span> Publishing</button></nav>
         <div className="studio-sidebar-footer"><a href={PLANNER_URL}>← Wedding Planner</a><button onClick={onLogout}>Sign out</button></div>
       </aside>
 
@@ -288,19 +287,11 @@ export default function Builder({ session, onLogout }) {
         <header className="studio-topbar"><button className="studio-menu" aria-label="Open navigation" aria-expanded={sidebarOpen} onClick={() => setSidebarOpen(true)}>☰</button><div><p className="eyebrow">TieTheKnot PH</p><h1>{pageTitle}</h1></div><div className="topbar-actions">{active === "design" && <button className="button primary" disabled={busy === "design"} onClick={() => saveDesign()}>{busy === "design" ? "Saving…" : "Save design"}</button>}</div></header>
         {notice && <div className={`notice ${notice.type}`} role="status"><span>{notice.text}</span><button aria-label="Dismiss message" onClick={() => setNotice(null)}>×</button></div>}
 
-        {active === "design" && <main className="design-page"><div className="design-section-nav" aria-label="Design sections">{DESIGN_SECTIONS.map(([key, label, detail]) => <button key={key} className={designSection === key ? "active" : ""} onClick={() => setDesignSection(key)}><span>{label}</span><small>{detail}</small></button>)}</div><div className="design-workspace"><section className="editor-panel" aria-labelledby="editor-title"><div className="editor-title"><p className="eyebrow">Customize section</p><h2 id="editor-title">{DESIGN_SECTIONS.find(([key]) => key === designSection)?.[1]}</h2></div>{editorFields()}</section><aside className="preview-panel"><div className="preview-label"><span>Live preview</span><small>Scroll all pages</small></div><InvitationPreview preview design={design} event={data.event}><section className="preview-rsvp"><div className="reveal-item"><p className="section-kicker">Kindly respond</p><h2>Will you celebrate with us?</h2><div><button>Accept</button><button>Decline</button></div></div></section></InvitationPreview></aside></div></main>}
+        {active === "design" && <main className="design-page"><div className="design-section-nav" aria-label="Design sections">{DESIGN_SECTIONS.map(([key, label, detail]) => <button key={key} className={designSection === key ? "active" : ""} onClick={() => setDesignSection(key)}><span>{label}</span><small>{detail}</small></button>)}</div><div className="design-workspace"><section className="editor-panel" aria-labelledby="editor-title"><div className="editor-title"><p className="eyebrow">Customize section</p><h2 id="editor-title">{DESIGN_SECTIONS.find(([key]) => key === designSection)?.[1]}</h2></div>{editorFields()}</section><aside className="preview-panel"><div className="preview-label"><span>Live preview</span><small>Scroll all pages</small></div><InvitationPreview preview design={design} event={data.event}><section className="preview-rsvp"><div className="reveal-item"><p className="section-kicker">Kindly respond</p><h2>Will you celebrate with us?</h2><label className="public-field">Full Name<input disabled placeholder="Enter your full name" /></label><div><button disabled>Accept</button><button disabled>Decline</button></div></div></section></InvitationPreview></aside></div></main>}
 
-        {active === "guests" && <main className="content-page">
-          <div className="section-heading"><div><h2>Guest RSVP</h2><p className="muted">Share the same invitation link with everyone. Give each guest their RSVP code privately.</p></div>
-            <label className="search-box"><span className="visually-hidden">Search guests</span><input type="search" placeholder="Search guests…" value={search} onChange={(event) => setSearch(event.target.value)} /></label>
-          </div>
-          <div className="guest-card-grid">{filteredGuests.map((guest) => <article className="guest-card" key={guest._id}>
-            <h3>{guest.name}</h3>
-            <dl><div><dt>RSVP</dt><dd>{guest.rsvpStatus === "Declined" ? "Declined" : guest.confirmed ? "Accepted" : guest.rsvpStatus || "Pending"}</dd></div><div><dt>Attending</dt><dd>{guest.attendingPax || 0} pax</dd></div></dl>
-            {guest.rsvpCode && <button className="button secondary" onClick={() => copyText(guest.rsvpCode, "RSVP code copied.")}>Copy RSVP code</button>}
-          </article>)}</div>
-          {!filteredGuests.length && <p>No guests found. Add guests in Planner or change your search.</p>}
-        </main>}
+        {active === "guests" && <RsvpInbox guests={data.guests} onGuestUpdated={(updated) =>
+          setData((current) => ({ ...current, guests: current.guests.map((guest) => guest._id === updated._id ? updated : guest) }))
+        } />}
 
         {active === "settings" && <main className="content-page narrow">
           <div className="section-heading"><div><p className="eyebrow">Visibility</p><h2>Publishing</h2></div></div>

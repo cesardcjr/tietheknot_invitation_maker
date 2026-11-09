@@ -18,6 +18,9 @@ export const auth = {
 };
 
 export const invitations = {
+  responses: (page) => client.get("/invitations/rsvp/responses", { params: { page } }),
+  checkResponse: (id, checked) => client.patch("/invitations/rsvp/responses/" + id, { checked }),
+  updateGuestResponse: (id, response) => client.patch("/invitations/rsvp/guests/" + id, { response }),
   bootstrap: () => client.get("/invitations/bootstrap"),
   create: (guestId, customMessage = "") => client.post("/invitations", { guestId, customMessage }),
   update: (id, updates) => client.patch(`/invitations/${id}`, updates),
@@ -64,7 +67,5 @@ export async function uploadToCloudinary(file) {
 const sharedPath = (key) => "/public/invitations/event/" + encodeURIComponent(key);
 export const sharedInvitation = {
   get: (key) => publicClient.get(sharedPath(key)),
-  search: (key, query, signal) => publicClient.post(sharedPath(key) + "/search", { query }, { signal }),
-  verify: (key, name, code) => publicClient.post(sharedPath(key) + "/verify", { name, code }),
   respond: (key, response) => publicClient.post(sharedPath(key) + "/rsvp", response),
 };
