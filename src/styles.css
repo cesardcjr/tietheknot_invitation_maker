@@ -344,3 +344,34 @@ input[type="range"] { min-height: 38px; border: 0; padding: 0; accent-color: var
 }
 
 @keyframes rsvp-panel-in { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+
+
+.dress-card-grid.dress-card-grid-stacked { grid-template-columns: minmax(0, 1fr); }
+.dress-card-grid:not(.dress-card-grid-stacked) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.dress-image-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 110px), 1fr));
+  gap: .5rem;
+  padding: .75rem;
+}
+.dress-card .dress-image-gallery img {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  object-fit: contain;
+}
+.dress-gallery-editor { display: grid; gap: .5rem; }
+.venue-photo-card img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  border-radius: .65rem;
+  margin-bottom: .75rem;
+}
+.venue-map-link { display: inline-flex; margin-top: .75rem; }
+.rsvp-lookup { margin: 1rem auto; max-width: 28rem; }
+.rsvp-lookup input { width: 100%; min-height: 44px; }
+.rsvp-suggestions { list-style: none; margin: .3rem 0; padding: 0; }
+.rsvp-suggestions button { width: 100%; min-height: 44px; text-align: left; }
+.rsvp-result { display: grid; justify-items: center; gap: .65rem; margin-top: 1rem; }

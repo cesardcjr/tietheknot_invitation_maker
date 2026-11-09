@@ -1,3 +1,4 @@
+import mapLocation from "../utils/mapLocation";
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Countdown from "./Countdown";
 import { youtubeEmbedUrl } from "../utils/youtube";
@@ -47,12 +48,14 @@ function CoverCarousel({ images = [] }) {
   </div>;
 }
 
-export default function InvitationPreview({ design, event, guest, children, preview = false }) {
+export default function InvitationPreview({ design, event, children, preview = false }) {
   const storyRef = useRef(null);
   const content = design?.content || {};
   const theme = design?.theme || {};
   const assets = design?.assets || {};
   const sections = design?.sections || {};
+  const ladies = assets.womenDressImages ?? (assets.womenDressImage ? [assets.womenDressImage] : []);
+  const gentlemen = assets.menDressImages ?? (assets.menDressImage ? [assets.menDressImage] : []);
   const videoUrl = youtubeEmbedUrl(content.youtubeUrl);
   const ceremonyVenue = content.ceremonyVenue || content.venue;
   const ceremonyAddress = content.ceremonyAddress || content.address;
@@ -126,22 +129,48 @@ export default function InvitationPreview({ design, event, guest, children, prev
           <p className="section-kicker">Counting down to forever</p>
           <Countdown date={event?.targetDate} time={content.ceremonyTime} />
           <div className="ornament" aria-hidden="true">❦</div>
-          <p className={`guest-greeting font-${sections.greeting?.fontFamily || "classic"}`} style={greetingStyle}>Dear {guest?.name || "Honored Guest"},</p>
+          <p className={`guest-greeting font-${sections.greeting?.fontFamily || "classic"}`} style={greetingStyle}>{content.welcomeHeadline || "Welcome to our wedding"}</p>
           <p className="welcome-message">{content.welcomeMessage || "Together with our families, we invite you to celebrate with us."}</p>
         </div>
       </section>
 
-      {(videoUrl || content.videoMessage) && <section className="story-section video-section"><div className="section-inner"><p className="section-kicker">A glimpse of our story</p>{content.videoMessage && <h2>{content.videoMessage}</h2>}{videoUrl && <div className="video-frame"><iframe src={videoUrl} title="A message from the couple" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen /></div>}</div></section>}
+      {(videoUrl || content.videoMessage) && <section className="story-section video-section"><div className="section-inner"><h2>{content.videoHeading || "A glimpse of our story"}</h2>{content.videoMessage && <p>{content.videoMessage}</p>}{videoUrl && <div className="video-frame"><iframe src={videoUrl} title="A message from the couple" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen /></div>}</div></section>}
 
       <section className="story-section venue-section"><div className="section-inner"><p className="section-kicker">Where to celebrate</p><h2>Wedding Details</h2><div className="venue-card-grid">
-        <article className="venue-card"><span className="venue-icon" aria-hidden="true">♢</span><h3>Wedding Ceremony</h3><strong>{ceremonyVenue || "Venue to be announced"}</strong><p>{ceremonyAddress || "Address to follow"}</p><time dateTime={content.ceremonyTime || undefined}>{formatTime(content.ceremonyTime)}</time></article>
-        <article className="venue-card"><span className="venue-icon" aria-hidden="true">✦</span><h3>Reception</h3><strong>{receptionVenue || "Venue to be announced"}</strong><p>{receptionAddress || "Address to follow"}</p><time dateTime={content.receptionTime || undefined}>{formatTime(content.receptionTime)}</time></article>
+        {[
+          { title: "Wedding Ceremony", name: ceremonyVenue, address: ceremonyAddress, time: content.ceremonyTime, image: assets.ceremonyImage, map: content.ceremonyMap },
+          { title: "Reception", name: receptionVenue, address: receptionAddress, time: content.receptionTime, image: assets.receptionImage, map: content.receptionMap },
+        ].map(({ title, name, address, time, image, map }) => {
+          const mapUrl = mapLocation(map);
+          return <article className="venue-card venue-photo-card" key={title}>
+            {image?.secureUrl && <img src={image.secureUrl} alt={image.alt || title + " venue"} loading="lazy" />}
+            <h3>{title}</h3><strong>{name || "Venue to be announced"}</strong><p>{address || "Address to follow"}</p>
+            {time && <time dateTime={time}>{formatTime(time)}</time>}
+            {mapUrl && <a className="button secondary venue-map-link" href={mapUrl} target="_blank" rel="noopener noreferrer">View Maps</a>}
+          </article>;
+        })}
       </div></div></section>
 
-      <section className="story-section dress-section"><div className="section-inner"><p className="section-kicker">Celebrate in style</p><h2>Dress Code</h2>{content.dressCode && <p className="dress-intro">{content.dressCode}</p>}<div className="dress-card-grid">
-        <article className="dress-card">{assets.menDressImage?.secureUrl ? <img src={assets.menDressImage.secureUrl} alt={assets.menDressImage.alt || "Men's dress code reference"} /> : <div className="dress-placeholder" aria-hidden="true">Men</div>}<div><h3>Men</h3><p>{content.dressCodeMen || "Formal attire"}</p><Palette colors={content.menColors} /></div></article>
-        <article className="dress-card">{assets.womenDressImage?.secureUrl ? <img src={assets.womenDressImage.secureUrl} alt={assets.womenDressImage.alt || "Women's dress code reference"} /> : <div className="dress-placeholder" aria-hidden="true">Women</div>}<div><h3>Women</h3><p>{content.dressCodeWomen || "Formal attire"}</p><Palette colors={content.womenColors} /></div></article>
-      </div></div></section>
+      <section className="story-section dress-section"><div className="section-inner">
+        <h2>{content.dressHeading || "Celebrate in Style"}</h2>
+        {content.dressCode && <p className="dress-intro">{content.dressCode}</p>}
+        <div className={"dress-card-grid" + (Math.max(ladies.length, gentlemen.length) > 1 ? " dress-card-grid-stacked" : "")}>
+          {[
+            { label: "Ladies", images: ladies, guidance: content.dressCodeWomen, colors: content.womenColors },
+            { label: "Gentlemen", images: gentlemen, guidance: content.dressCodeMen, colors: content.menColors },
+          ].map(({ label, images, guidance, colors }) => <article className="dress-card" key={label}>
+            <div><h3>{label}</h3><p>{guidance || "Formal attire"}</p><Palette colors={colors} /></div>
+            {images.length > 0 && <div className="dress-image-gallery">
+              {images.map((image, index) => <img key={image.publicId || index} src={image.secureUrl} alt={image.alt || label + " dress code reference " + (index + 1)} loading="lazy" />)}
+            </div>}
+          </article>)}
+        </div>
+      </div></section>
+
+      <section className="story-section seating-notice"><div className="section-inner">
+        <h2>{content.seatingHeading || "Seating Information"}</h2>
+        <p>Your seat assignment will be provided at the venue.</p>
+      </div></section>
 
       {children}
 

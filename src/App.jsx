@@ -1,3 +1,4 @@
+import StudioHandoff from "./pages/StudioHandoff";
 import React, { useState } from "react";
 import Login from "./pages/Login";
 import Builder from "./pages/Builder";
@@ -16,6 +17,10 @@ export default function App() {
     return token && user ? { token, user: JSON.parse(user) } : null;
   });
 
+  const path = window.location.pathname;
+  const sharedKey = path.match(/^\/event\/([A-Za-z0-9_-]{24})\/?$/)?.[1];
+  if (sharedKey) return <PublicInvitation key={sharedKey} sharedKey={sharedKey} />;
+  if (path === "/handoff" || path === "/handoff/start") return <StudioHandoff start={path.endsWith("/start")} />;
   if (publicToken) return <PublicInvitation token={publicToken} />;
   if (!session) return <Login onLogin={setSession} />;
   return (

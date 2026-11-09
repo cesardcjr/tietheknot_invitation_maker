@@ -2,7 +2,7 @@ import axios from "axios";
 
 export const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 export const PUBLIC_URL = (import.meta.env.VITE_PUBLIC_URL || window.location.origin).replace(/\/$/, "");
-export const PLANNER_URL = import.meta.env.VITE_PLANNER_URL || "http://localhost:5173";
+export const PLANNER_URL = import.meta.env.VITE_PLANNER_URL || (import.meta.env.PROD ? "https://tietheknot-mern-front-end.vercel.app" : "http://localhost:5173");
 
 const client = axios.create({ baseURL: API_URL, timeout: 20000 });
 
@@ -13,6 +13,7 @@ client.interceptors.request.use((config) => {
 });
 
 export const auth = {
+  exchange: (code, verifier) => client.post("/auth/studio-handoff/exchange", { code, verifier }),
   login: (credentials) => client.post("/auth/login", credentials),
 };
 
@@ -22,15 +23,18 @@ export const invitations = {
   update: (id, updates) => client.patch(`/invitations/${id}`, updates),
   regenerate: (id) => client.post(`/invitations/${id}/regenerate-link`),
   revoke: (id) => client.delete(`/invitations/${id}`),
+  publishDesign: (published) => client.post("/invitations/design/publish", { published }),
   saveDesign: (design) => client.put("/invitations/design/current", design),
   saveSettings: (settings) => client.patch("/invitations/settings/current", settings),
   uploadSignature: () => client.post("/media/signature"),
   deleteImage: (publicId) => client.delete("/media/image", { data: { publicId } }),
 };
 
+const publicClient = axios.create({ baseURL: API_URL, timeout: 20000 });
+
 export const publicInvitation = {
-  get: (token) => client.get(`/public/invitations/${encodeURIComponent(token)}`),
-  rsvp: (token, response) => client.post(`/public/invitations/${encodeURIComponent(token)}/rsvp`, response),
+  get: (token) => publicClient.get(`/public/invitations/${encodeURIComponent(token)}`),
+  rsvp: (token, response) => publicClient.post(`/public/invitations/${encodeURIComponent(token)}/rsvp`, response),
 };
 
 export async function uploadToCloudinary(file) {
@@ -56,3 +60,11 @@ export async function uploadToCloudinary(file) {
     alt: "Wedding invitation cover photo",
   };
 }
+
+const sharedPath = (key) => "/public/invitations/event/" + encodeURIComponent(key);
+export const sharedInvitation = {
+  get: (key) => publicClient.get(sharedPath(key)),
+  search: (key, query, signal) => publicClient.post(sharedPath(key) + "/search", { query }, { signal }),
+  verify: (key, name, code) => publicClient.post(sharedPath(key) + "/verify", { name, code }),
+  respond: (key, response) => publicClient.post(sharedPath(key) + "/rsvp", response),
+};

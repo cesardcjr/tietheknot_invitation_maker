@@ -1,76 +1,181 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import InvitationPreview from "../components/InvitationPreview";
-import { publicInvitation } from "../api";
+import { publicInvitation, sharedInvitation } from "../api";
 
-export default function PublicInvitation({ token }) {
+const responseCopy = {
+  Accepted: "See you!",
+  Declined: "We understand, thank you for responding!",
+};
+const message = (error, fallback) => error.response?.data?.message || fallback;
+
+export default function PublicInvitation({ sharedKey, token }) {
   const [data, setData] = useState(null);
+  const [pageError, setPageError] = useState("");
   const [error, setError] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [choice, setChoice] = useState("");
+  const [query, setQuery] = useState("");
+  const [names, setNames] = useState([]);
+  const [searchState, setSearchState] = useState("");
+  const [selected, setSelected] = useState("");
+  const [code, setCode] = useState("");
+  const [proof, setProof] = useState("");
+  const [status, setStatus] = useState("");
+  const [editing, setEditing] = useState(false);
+  const [declining, setDeclining] = useState(false);
   const [declineReason, setDeclineReason] = useState("");
-  const [revealedStatus, setRevealedStatus] = useState("");
+  const [busy, setBusy] = useState(false);
+  const suggestionList = useRef(null);
+  const verified = sharedKey ? Boolean(proof) : Boolean(data);
 
   useEffect(() => {
-    publicInvitation.get(token).then(({ data: value }) => {
+    let active = true;
+    const request = sharedKey ? sharedInvitation.get(sharedKey) : publicInvitation.get(token);
+    request.then(({ data: value }) => {
+      if (!active) return;
+      if (value.sharedKey && !sharedKey) {
+        window.location.replace("/event/" + encodeURIComponent(value.sharedKey));
+        return;
+      }
       setData(value);
-      const savedStatus = ["Accepted", "Declined"].includes(value.guest?.rsvpStatus) ? value.guest.rsvpStatus : "";
-      setChoice(savedStatus);
-      setRevealedStatus(savedStatus);
-      setDeclineReason(value.guest?.declineReason || "");
-    }).catch((err) => setError(err.response?.data?.message || "This invitation is unavailable."));
-  }, [token]);
+      setStatus(value.guest?.rsvpStatus || "");
+    }).catch((err) => {
+      if (active) setPageError(message(err, "This invitation is unavailable."));
+    });
+    return () => { active = false; };
+  }, [sharedKey, token]);
 
-  const saveResponse = async (payload) => {
-    setSaving(true); setError("");
-    try {
-      const response = await publicInvitation.rsvp(token, payload);
-      setData(response.data);
-      setRevealedStatus(payload.rsvpStatus);
-      document.getElementById("rsvp")?.scrollIntoView({ behavior: "smooth", block: "center" });
-      return true;
-    } catch (err) { setError(err.response?.data?.message || "We couldn't save your RSVP. Please try again."); }
-    finally { setSaving(false); }
-    return false;
-  };
+  useEffect(() => {
+    if (!sharedKey || selected || query.trim().length < 3) return;
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      setSearchState("searching");
+      try {
+        const { data: result } = await sharedInvitation.search(sharedKey, query, controller.signal);
+        if (controller.signal.aborted) return;
+        setNames(result.names);
+        setSearchState(result.names.length ? "" : "empty");
+      } catch (err) {
+        if (controller.signal.aborted) return;
+        setError(message(err, "Unable to search right now. Please try again."));
+        setSearchState("");
+      }
+    }, 300);
+    return () => { clearTimeout(timer); controller.abort(); };
+  }, [sharedKey, query, selected]);
 
-  const accept = async () => {
-    if (saving) return;
-    setChoice("Accepted");
-    setRevealedStatus("");
+  function changeName(value) {
+    setQuery(value);
+    setSelected("");
+    setNames([]);
+    setSearchState("");
+    setCode("");
+    setProof("");
+    setStatus("");
+    setEditing(false);
+    setDeclining(false);
     setDeclineReason("");
     setError("");
-    await saveResponse({ rsvpStatus: "Accepted" });
-  };
+  }
 
-  const chooseDecline = () => {
-    if (saving) return;
-    setChoice("Declined");
-    setRevealedStatus("");
-    setError("");
-  };
-
-  const submitDecline = async (event) => {
+  async function verify(event) {
     event.preventDefault();
-    if (!declineReason.trim()) return setError("Please tell the couple why you cannot attend.");
-    await saveResponse({ rsvpStatus: "Declined", declineReason: declineReason.trim() });
-  };
+    setBusy(true);
+    setError("");
+    try {
+      const { data: result } = await sharedInvitation.verify(sharedKey, selected, code);
+      setProof(result.proof);
+      setStatus(result.status);
+      setCode("");
+    } catch (err) { setError(message(err, "Unable to verify your RSVP code.")); }
+    finally { setBusy(false); }
+  }
 
-  if (error && !data) return <main className="public-state"><div className="brand-mark">TTK</div><h1>Invitation unavailable</h1><p>{error}</p></main>;
+  async function respond(rsvpStatus) {
+    setBusy(true);
+    setError("");
+    try {
+      const payload = { rsvpStatus, declineReason: rsvpStatus === "Declined" ? declineReason.trim() : "" };
+      if (sharedKey) await sharedInvitation.respond(sharedKey, { ...payload, proof });
+      else await publicInvitation.rsvp(token, payload);
+      setStatus(rsvpStatus);
+      setEditing(false);
+      setDeclining(false);
+      setDeclineReason("");
+    } catch (err) {
+      if (sharedKey && err.response?.status === 403) {
+        setProof("");
+        setStatus("");
+        setEditing(false);
+        setDeclining(false);
+      }
+      setError(message(err, "We couldn't save your RSVP. Please try again."));
+    } finally { setBusy(false); }
+  }
+
+  if (pageError) return <main className="public-state"><h1>Invitation unavailable</h1><p>{pageError}</p></main>;
   if (!data) return <main className="public-state"><span className="spinner" /><p>Opening your invitation…</p></main>;
 
-  const assignment = data.seating.released && data.seating.tableLabel ? data.seating.tableLabel : "Your table number will appear soon.";
+  const chooseName = (name) => {
+    setSelected(name);
+    setQuery(name);
+    setNames([]);
+    setError("");
+  };
 
   return (
     <main className="public-page">
-      <InvitationPreview design={data.design} event={data.event} guest={data.guest}>
-        {data.invitation.customMessage && <blockquote className="personal-message">“{data.invitation.customMessage}”</blockquote>}
+      <InvitationPreview design={data.design} event={data.event}>
         <section className="story-section rsvp-story-section" id="rsvp" aria-labelledby="rsvp-title"><div className="section-inner">
-          <form className="rsvp-form" onSubmit={submitDecline}><p className="section-kicker">Kindly respond</p><h2 id="rsvp-title">Will you celebrate with us?</h2><div className="response-options"><button type="button" disabled={saving} className={choice === "Accepted" ? "selected" : ""} aria-pressed={choice === "Accepted"} onClick={accept}><span aria-hidden="true">✓</span><strong>{saving && choice === "Accepted" ? "Accepting…" : "Accept"}</strong><small>Joyfully attending</small></button><button type="button" disabled={saving} className={choice === "Declined" ? "selected decline" : ""} aria-pressed={choice === "Declined"} onClick={chooseDecline}><span aria-hidden="true">×</span><strong>Decline</strong><small>Unable to attend</small></button></div>
-            {revealedStatus === "Accepted" && <div className={`table-reveal${data.seating.tableLabel ? " assigned" : ""}`} role="status"><small>Your table assignment</small><strong>{assignment}</strong></div>}
-            {choice === "Declined" && revealedStatus !== "Declined" && <div className="decline-response-panel"><label className="public-field decline-reason">Reason for declining <span aria-hidden="true">*</span><textarea required autoFocus rows="4" maxLength="1000" value={declineReason} onChange={(e) => setDeclineReason(e.target.value)} placeholder="Please share a brief reason with the couple" /></label>{error && <p className="form-error" role="alert">{error}</p>}<button className="button primary wide" disabled={saving}>{saving ? "Sending response…" : "Send"}</button></div>}
-            {revealedStatus === "Declined" && <p className="rsvp-response-note" role="status">Your response has been shared with the couple.</p>}
-            {error && choice !== "Declined" && <p className="form-error" role="alert">{error}</p>}
-          </form>
+          <div className="rsvp-form">
+            <p className="section-kicker">Kindly respond</p>
+            <h2 id="rsvp-title">Will you celebrate with us?</h2>
+            {sharedKey && !selected && <div className="rsvp-lookup">
+              <label className="public-field">Full Name
+                <input type="search" maxLength={160} autoComplete="off" value={query} onChange={(event) => changeName(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "ArrowDown" && names.length) {
+                      event.preventDefault();
+                      suggestionList.current?.querySelector("button")?.focus();
+                    }
+                  }} />
+              </label>
+              {names.length > 0 && <ul ref={suggestionList} className="rsvp-suggestions" aria-label="Matching guest names">
+                {names.map((name) => <li key={name}><button type="button" onClick={() => chooseName(name)}>{name}</button></li>)}
+              </ul>}
+              <p aria-live="polite">{searchState === "searching" ? "Searching…" : searchState === "empty" ? "No matching names. Check the spelling or ask the host." : "Enter at least three characters and choose your name."}</p>
+            </div>}
+            {sharedKey && selected && <div className="rsvp-lookup">
+              <p><strong>{selected}</strong> <button type="button" className="text-button" disabled={busy} onClick={() => changeName("")}>Change name</button></p>
+              {!verified && <form onSubmit={verify}>
+                <label className="public-field">Private RSVP code
+                  <input required maxLength={10} autoComplete="off" autoCapitalize="characters" value={code} onChange={(event) => setCode(event.target.value)} />
+                </label>
+                <p>Enter the code provided privately by your host.</p>
+                <button className="button primary" disabled={busy}>{busy ? "Verifying…" : "Verify"}</button>
+              </form>}
+            </div>}
+            {verified && responseCopy[status] && !editing && <div className="rsvp-result">
+              <p role="status">{responseCopy[status]}</p>
+              <button type="button" className="button secondary" onClick={() => { setEditing(true); setError(""); }}>Change response</button>
+            </div>}
+            {verified && (!responseCopy[status] || editing) && <>
+              <div className="response-options">
+                <button type="button" disabled={busy} onClick={() => respond("Accepted")}><span aria-hidden="true">✓</span><strong>Accept</strong></button>
+                <button type="button" disabled={busy} onClick={() => { setDeclining(true); setError(""); }}><span aria-hidden="true">×</span><strong>Decline</strong></button>
+              </div>
+              {declining && <form className="decline-response-panel" onSubmit={(event) => {
+                event.preventDefault();
+                if (declineReason.trim()) respond("Declined");
+                else setError("Please tell the couple why you cannot attend.");
+              }}>
+                <label className="public-field decline-reason">Reason for declining
+                  <textarea required rows={3} maxLength={1000} value={declineReason} onChange={(event) => setDeclineReason(event.target.value)} />
+                </label>
+                <button className="button primary" disabled={busy}>{busy ? "Sending…" : "Send response"}</button>
+              </form>}
+              {editing && <button type="button" className="text-button" disabled={busy} onClick={() => { setEditing(false); setDeclining(false); setError(""); }}>Cancel change</button>}
+            </>}
+            {error && <p className="form-error" role="alert">{error}</p>}
+          </div>
         </div></section>
       </InvitationPreview>
       <footer className="public-footer">Created with TieTheKnot PH</footer>
