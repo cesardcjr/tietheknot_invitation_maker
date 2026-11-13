@@ -80,7 +80,7 @@ textarea { resize: vertical; line-height: 1.5; }
 .design-section-nav button span { font-size: .8rem; font-weight: 800; }
 .design-section-nav button small { color: var(--muted); font-size: .65rem; }
 .design-section-nav button.active { color: var(--green); border-color: #8fb7a2; background: var(--green-soft); box-shadow: inset 0 -3px var(--green); }
-.design-workspace { display: grid; grid-template-columns: minmax(430px, .82fr) minmax(520px, 1.18fr); gap: 1rem; align-items: start; }
+.design-workspace { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 1rem; align-items: start; }
 .editor-panel { min-width: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 12px; background: white; box-shadow: var(--shadow); }
 .editor-title { border-bottom: 1px solid #e8ece9; padding: 1.15rem 1.25rem; }
 .editor-title h2 { margin: 0; font-family: "Playfair Display", serif; font-size: 1.45rem; }
@@ -105,17 +105,9 @@ input[type="range"] { min-height: 38px; border: 0; padding: 0; accent-color: var
 .image-control img, .image-control-empty { width: 116px; height: 88px; border-radius: 8px; object-fit: cover; }
 .image-control-empty { display: grid; place-items: center; color: #87948d; background: #e8eeea; font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; }
 .image-control p { margin: .35rem 0 .65rem; color: var(--muted); font-size: .7rem; }
-.cover-media-grid { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1.25fr); gap: .8rem; align-items: start; }
-.cover-media-grid .image-control { grid-template-columns: 1fr; margin: 0; }
-.cover-media-grid .image-control img, .cover-media-grid .image-control-empty { width: 100%; height: 150px; }
 .carousel-control { min-width: 0; border: 1px solid #e0e6e2; border-radius: 10px; padding: .8rem; background: #fafbf9; }
 .carousel-control-head { display: flex; align-items: flex-start; justify-content: space-between; gap: .65rem; }
 .carousel-control-head p { margin: .3rem 0 .6rem; color: var(--muted); font-size: .68rem; line-height: 1.4; }
-.carousel-control-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: .45rem; margin-top: .55rem; }
-.carousel-control-grid figure { position: relative; min-width: 0; margin: 0; }
-.carousel-control-grid img { width: 100%; aspect-ratio: 16/9; border-radius: 7px; object-fit: cover; }
-.carousel-control-grid button { position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; border: 0; border-radius: 50%; background: rgba(20,30,25,.78); color: #fff; cursor: pointer; }
-.carousel-control-grid figcaption { color: var(--muted); font-size: .62rem; text-align: center; }
 .carousel-control-empty { min-height: 86px; display: grid; place-items: center; margin-top: .55rem; border: 1px dashed #cbd6d0; border-radius: 8px; color: var(--muted); font-size: .7rem; }
 .inline-actions { display: flex; align-items: center; gap: .65rem; }
 .file-button { position: relative; overflow: hidden; }
@@ -308,7 +300,6 @@ input[type="range"] { min-height: 38px; border: 0; padding: 0; accent-color: var
   .section-heading { align-items: flex-start; flex-direction: column; }
   .section-heading > .button, .search-box { width: 100%; }
   .field-grid, .style-controls, .theme-grid, .editor-info-grid { grid-template-columns: 1fr; }
-  .cover-media-grid { grid-template-columns: 1fr; }
   .cover-content.has-carousel { grid-template-columns: 1fr; padding-block: 3rem 5.5rem; }
   .cover-carousel { width: min(100%,500px); }
   .field-grid .full, .style-controls .full { grid-column: auto; }
@@ -372,20 +363,56 @@ input[type="range"] { min-height: 38px; border: 0; padding: 0; accent-color: var
 }
 .venue-map-link { display: inline-flex; margin-top: .75rem; }
 
-.typography-grid, .typography-controls {
+.typography-controls {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr));
+  grid-template-columns: minmax(0, 1fr) minmax(0, .55fr);
   gap: .65rem;
 }
 .typography-controls {
-  min-inline-size: 0;
-  margin: 0;
-  padding: .65rem;
-  border: 1px solid var(--line, #dbe2dc);
-  border-radius: .5rem;
+  padding: 0 .65rem .65rem;
 }
-.typography-controls legend { padding-inline: .25rem; font-size: .85rem; }
-.typography-controls label, .typography-controls input, .typography-controls select { min-width: 0; }
+.form-section { display: grid; gap: .9rem; }
+.form-section h3 { margin: 0; font-size: .95rem; }
+.form-section .field-hint { margin: 0; }
+.styled-field, .dress-gallery-editor { display: grid; gap: .5rem; min-width: 0; }
+.editor-panel label:not(.button) { display: grid; gap: .35rem; min-width: 0; font-size: .82rem; font-weight: 650; color: #435049; }
+.editor-panel :is(input:not([type="checkbox"], [type="file"]), select, textarea) { width: 100%; min-width: 0; max-width: 100%; font: inherit; font-weight: 400; }
+.editor-panel textarea { resize: vertical; }
+.editor-panel .palette-add { display: inline-flex; align-items: center; }
+.editor-panel .palette-add input[type="color"] { width: 2rem; }
+.editor-panel .color-control input[type="color"] { width: 2rem; }
+.typography-details { border: 1px solid var(--line); border-radius: 8px; background: #fafbf9; }
+.typography-details summary, .page-appearance summary { cursor: pointer; color: var(--green-dark); font-size: .82rem; font-weight: 700; }
+.typography-details summary { padding: .6rem .7rem; }
+.typography-details summary span { margin-left: .35rem; color: var(--muted); font-weight: 400; }
+.page-appearance > :not(summary) { margin-top: .8rem; }
+.text-style-actions { display: flex; flex-wrap: wrap; align-items: end; gap: .35rem; }
+.text-style-actions button { min-height: 36px; padding: .3rem .5rem; border: 1px solid var(--line); border-radius: 6px; background: white; color: var(--green-dark); cursor: pointer; }
+.text-style-actions button[aria-pressed="true"] { background: var(--green-dark); color: white; }
+.editor-panel .image-control { grid-template-columns: minmax(0, 100px) minmax(0, 1fr); margin: 0; gap: .7rem; min-width: 0; }
+.editor-panel .image-control img, .editor-panel .image-control-empty { width: 100%; height: 74px; }
+.image-control strong, .carousel-control strong { font-size: .9rem; overflow-wrap: anywhere; }
+.editor-panel .inline-actions, .carousel-control-head { flex-wrap: wrap; }
+.editor-panel .file-button { font-size: .8rem; padding-inline: .65rem; }
+.carousel-slide-list { display: grid; gap: .45rem; list-style: none; margin: .65rem 0 0; padding: 0; }
+.carousel-slide-list li { display: grid; grid-template-columns: 80px minmax(0, 1fr) auto; align-items: center; gap: .6rem; padding: .35rem; border: 1px solid var(--line); border-radius: 8px; background: white; }
+.carousel-slide-thumbnail { position: relative; }
+.carousel-slide-thumbnail img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 5px; }
+.carousel-slide-thumbnail button { position: absolute; top: 1px; right: 1px; width: 29px; height: 29px; border: 1px solid white; border-radius: 50%; background: #21342a; color: white; cursor: pointer; }
+.editor-panel input[type="file"]:disabled { pointer-events: none; }
+.editor-panel label:has(+ input[type="file"]:disabled) { opacity: .55; cursor: default; }
+.editor-panel label:has(+ input[type="file"]:focus-visible) { outline: 2px solid var(--green); outline-offset: 2px; }
+.invitation-date.custom-date { text-transform: none; white-space: pre-line; }
+.closing-contact { white-space: pre-line; }
+.cover-copy { min-width: 0; max-width: 100%; }
+.cover-monogram { min-height: 66px; height: auto; text-align: center; }
+.scroll-cue[style*="font-size"] { position: static; margin-top: .65rem; }
+
+@media (max-width: 420px) {
+  .editor-panel .image-control { grid-template-columns: 64px minmax(0, 1fr); }
+  .editor-panel .image-control img, .editor-panel .image-control-empty { height: 60px; }
+  .carousel-slide-list li { grid-template-columns: 62px minmax(0, 1fr) auto; gap: .35rem; }
+}
 .cover-logo { display: block; width: min(100%, 120px); height: 86px; object-fit: contain; margin: 0 auto 1.4rem; }
 .cover-monogram[aria-hidden="false"] { width: auto; min-width: 66px; max-width: 100%; padding-inline: .6rem; }
 .invitation-story :is(.page-content, .section-inner) { min-width: 0; overflow-wrap: anywhere; }

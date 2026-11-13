@@ -41,7 +41,18 @@ export const publicInvitation = {
 };
 
 export async function uploadToCloudinary(file) {
-  const { data } = await invitations.uploadSignature();
+  let data;
+  try {
+    ({ data } = await invitations.uploadSignature());
+  } catch (error) {
+    if (error.response?.status === 503) {
+      throw new Error(`Image uploads are unavailable. Check the Cloudinary settings on ${API_URL} and redeploy that API.`);
+    }
+    if (!error.response || error.response.status === 404) {
+      throw new Error(`Studio could not reach the upload service at ${API_URL}. Check the API address and allowed Studio origin.`);
+    }
+    throw error;
+  }
   const form = new FormData();
   form.append("file", file);
   form.append("api_key", data.apiKey);

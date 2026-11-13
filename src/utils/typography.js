@@ -31,7 +31,10 @@ export function newPageFont(key) {
 export function textStyle(value) {
   if (!value) return undefined;
   return {
-    fontFamily: families.get(value.fontFamily),
-    fontSize: Number.isFinite(value.fontSize) ? `${value.fontSize}px` : undefined,
+    ...(families.has(value.fontFamily) && { fontFamily: families.get(value.fontFamily) }),
+    ...(Number.isFinite(value.fontSize) && { fontSize: `${value.fontSize}px` }),
+    ...(/^#[0-9a-f]{6}$/i.test(value.textColor || "") && { color: value.textColor }),
+    ...(value.bold && { fontWeight: 700 }),
+    ...(value.italic && { fontStyle: "italic" }),
   };
 }

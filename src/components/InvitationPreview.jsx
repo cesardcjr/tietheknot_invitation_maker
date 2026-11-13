@@ -118,11 +118,11 @@ export default function InvitationPreview({ design, event, children, preview = f
         <div className={`page-content cover-content${assets.coverCarousel?.length ? " has-carousel" : ""}`}>
           <div className="cover-copy">{assets.coverLogo?.secureUrl
             ? <img className="cover-logo" src={assets.coverLogo.secureUrl} alt={assets.coverLogo.alt || "Wedding logo"} />
-            : <span className="cover-monogram" aria-hidden={!content.coverMonogram?.trim()}>{content.coverMonogram?.trim() || "TTK"}</span>}
-            <p className="invitation-kicker">{content.headline || "We're getting married"}</p>
-            <h1 style={{ fontFamily: newPageFont(sections.cover?.fontFamily) }}>{content.coupleNames || "Our Wedding"}</h1>
-            <p className="invitation-date">{formatDate(event?.targetDate)}</p>
-            <span className="scroll-cue">Scroll to celebrate <b aria-hidden="true">↓</b></span>
+            : <span className="cover-monogram" style={typography("coverMonogram")} aria-hidden={!content.coverMonogram?.trim()}>{content.coverMonogram?.trim() || "TTK"}</span>}
+            <p className="invitation-kicker" style={typography("headline")}>{content.headline || "We're getting married"}</p>
+            <h1 style={{ fontFamily: newPageFont(sections.cover?.fontFamily), ...typography("coupleNames") }}>{content.coupleNames || "Our Wedding"}</h1>
+            <p className={"invitation-date" + (content.coverDateText?.trim() ? " custom-date" : "")} style={typography("coverDateText")}>{content.coverDateText?.trim() || formatDate(event?.targetDate)}</p>
+            <span className="scroll-cue" style={typography("coverScrollCue")}>Scroll to celebrate <b aria-hidden="true">↓</b></span>
           </div>
           <CoverCarousel images={assets.coverCarousel || []} />
         </div>
@@ -131,15 +131,15 @@ export default function InvitationPreview({ design, event, children, preview = f
       <section className={`invitation-page welcome-page font-${sections.welcome?.fontFamily || "classic"}`} style={{ ...pageStyle(sections.welcome, assets.welcomeImage?.secureUrl), fontFamily: newPageFont(sections.welcome?.fontFamily) }}>
         <div className="page-layer" />
         <div className="page-content welcome-content">
-          <p className="section-kicker">Counting down to forever</p>
+          <p className="section-kicker" style={typography("welcomeKicker")}>Counting down to forever</p>
           <Countdown date={event?.targetDate} time={content.ceremonyTime} />
           <div className="ornament" aria-hidden="true">❦</div>
-          <p className={`guest-greeting font-${sections.greeting?.fontFamily || "classic"}`} style={{ ...greetingStyle, fontFamily: newPageFont(sections.greeting?.fontFamily) }}>{content.welcomeHeadline || "Welcome to our wedding"}</p>
+          <p className={`guest-greeting font-${sections.greeting?.fontFamily || "classic"}`} style={{ ...greetingStyle, fontFamily: newPageFont(sections.greeting?.fontFamily), ...typography("welcomeHeadline") }}>{content.welcomeHeadline || "Welcome to our wedding"}</p>
           <p className="welcome-message" style={typography("welcomeMessage")}>{content.welcomeMessage || "Together with our families, we invite you to celebrate with us."}</p>
         </div>
       </section>
 
-      {(videoUrl || content.videoMessage) && <section className="story-section video-section"><div className="section-inner"><h2>{content.videoHeading || "A glimpse of our story"}</h2>{content.videoMessage && <p style={typography("videoMessage")}>{content.videoMessage}</p>}{videoUrl && <div className="video-frame"><iframe src={videoUrl} title="A message from the couple" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen /></div>}</div></section>}
+      {(videoUrl || content.videoMessage) && <section className="story-section video-section"><div className="section-inner"><h2 style={typography("videoHeading")}>{content.videoHeading || "A glimpse of our story"}</h2>{content.videoMessage && <p style={typography("videoMessage")}>{content.videoMessage}</p>}{videoUrl && <div className="video-frame"><iframe src={videoUrl} title="A message from the couple" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen /></div>}</div></section>}
 
       <section className="story-section venue-section"><div className="section-inner"><p className="section-kicker" style={typography("venueKicker")}>Where to celebrate</p><h2 style={typography("venueHeading")}>Wedding Details</h2><div className="venue-card-grid">
         {[
@@ -172,7 +172,7 @@ export default function InvitationPreview({ design, event, children, preview = f
                 const note = dressImageNote(image);
                 return <figure key={image.publicId || index}>
                   <img src={image.secureUrl} alt={image.alt || label + " dress code reference " + (index + 1)} loading="lazy" />
-                  {note && <figcaption style={typography("dressFooterNotes")}>{note}</figcaption>}
+                  {note && <figcaption style={{ ...typography("dressFooterNotes"), ...textStyle(image.footerStyle) }}>{note}</figcaption>}
                 </figure>;
               })}
             </div>}
@@ -182,15 +182,15 @@ export default function InvitationPreview({ design, event, children, preview = f
       </div></section>
 
       <section className="story-section seating-notice"><div className="section-inner">
-        <h2>{content.seatingHeading || "Seating Information"}</h2>
-        <p>Your seat assignment will be provided at the venue.</p>
+        <h2 style={typography("seatingHeading")}>{content.seatingHeading || "Seating Information"}</h2>
+        <p style={typography("seatingBody")}>Your seat assignment will be provided at the venue.</p>
       </div></section>
 
       {children}
 
       <section className={`invitation-page closing-page font-${sections.closing?.fontFamily || "classic"}`} style={pageStyle(sections.closing, assets.closingImage?.secureUrl)}>
         <div className="page-layer" />
-        <div className="page-content closing-content"><span className="closing-mark" aria-hidden="true">∞</span><h2 style={{ fontFamily: newPageFont(sections.closing?.fontFamily), ...typography("closingMessage") }}>{content.closingMessage || "Thank you for being part of our story."}</h2>{content.contactMessage && <p>{content.contactMessage}</p>}<strong>{content.coupleNames || "With love"}</strong></div>
+        <div className="page-content closing-content"><span className="closing-mark" aria-hidden="true">∞</span><h2 style={{ fontFamily: newPageFont(sections.closing?.fontFamily), ...typography("closingMessage") }}>{content.closingMessage || "Thank you for being part of our story."}</h2>{content.contactMessage && <p className="closing-contact" style={typography("contactMessage")}>{content.contactMessage}</p>}<strong style={typography("closingSignature")}>{content.coupleNames || "With love"}</strong></div>
       </section>
     </article>
   );
