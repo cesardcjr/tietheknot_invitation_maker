@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import InvitationPreview from "../components/InvitationPreview";
+import { RsvpTitle, RsvpSubmit } from "../components/RsvpCopy";
 import { publicInvitation, sharedInvitation } from "../api";
 
 const responseCopy = {
@@ -56,7 +57,7 @@ export default function PublicInvitation({ sharedKey, token }) {
       <section className="story-section rsvp-story-section" id="rsvp" aria-labelledby="rsvp-title"><div className="section-inner">
         <form className="rsvp-form" onSubmit={submit}>
           <p className="section-kicker">Kindly respond</p>
-          <h2 id="rsvp-title">Will you celebrate with us?</h2>
+          <RsvpTitle id="rsvp-title" design={data.design} />
           {status ? <p className="rsvp-result" role="status">{responseCopy[status]}</p> : <>
             <label className="public-field">Full Name
               <input required maxLength={160} autoComplete="name" value={name} onChange={(event) => setName(event.target.value)} disabled={busy} />
@@ -68,7 +69,7 @@ export default function PublicInvitation({ sharedKey, token }) {
             {choice === "Declined" && <label className="public-field decline-reason">Reason for declining
               <textarea required rows={3} maxLength={1000} value={reason} onChange={(event) => setReason(event.target.value)} disabled={busy} />
             </label>}
-            {choice && <button className="button primary" disabled={busy}>{busy ? "Sending…" : "Send response"}</button>}
+            {choice && <RsvpSubmit design={data.design} busy={busy} />}
             {error && <p className="form-error" role="alert">{error}</p>}
           </>}
         </form>

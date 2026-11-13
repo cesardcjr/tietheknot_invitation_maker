@@ -1,4 +1,30 @@
 import React, { useState } from "react";
+import { FONT_OPTIONS } from "../utils/typography";
+
+function FontSelect({ label, value, onChange, allowDefault = false }) {
+  return <label>{label}<select value={value} onChange={(event) => onChange(event.target.value)}>
+    {allowDefault && <option value="">Section default</option>}
+    {FONT_OPTIONS.map(([key, name]) => <option key={key} value={key}>{name}</option>)}
+  </select></label>;
+}
+
+export function TypographyControls({ label, value = {}, onChange }) {
+  return <fieldset className="typography-controls">
+    <legend>{label}</legend>
+    <FontSelect label="Font style" value={value.fontFamily || ""} allowDefault
+      onChange={(fontFamily) => onChange({ ...value, fontFamily: fontFamily || undefined })} />
+    <label>Font size (px)<input type="number" min={12} max={80} placeholder="Default"
+      value={value.fontSize ?? ""} onChange={(event) => {
+        const size = event.target.valueAsNumber;
+        onChange({ ...value, fontSize: Number.isFinite(size) ? size : undefined });
+      }} onBlur={(event) => {
+        const size = event.target.valueAsNumber;
+        if (Number.isFinite(size) && (size < 12 || size > 80)) {
+          onChange({ ...value, fontSize: Math.min(80, Math.max(12, size)) });
+        }
+      }} /></label>
+  </fieldset>;
+}
 
 export function ImageUploadField({ id, label, asset, busy, onUpload, onRemove }) {
   return (
@@ -22,7 +48,7 @@ export function SectionStyleControls({ value, onChange }) {
   return (
     <div className="style-controls">
       <label>Background color<span className="color-control"><input type="color" value={current.backgroundColor || "#fbf8f1"} onChange={(e) => set("backgroundColor", e.target.value)} /><code>{current.backgroundColor || "#fbf8f1"}</code></span></label>
-      <label>Font style<select value={current.fontFamily || "classic"} onChange={(e) => set("fontFamily", e.target.value)}><option value="classic">Classic serif</option><option value="modern">Modern sans</option><option value="romantic">Romantic</option><option value="elegant">Elegant</option></select></label>
+      <FontSelect label="Font style" value={current.fontFamily || "classic"} onChange={(value) => set("fontFamily", value)} />
       <label className="range-field"><span>Image opacity <output>{Math.round((current.imageOpacity ?? .72) * 100)}%</output></span><input type="range" min="0" max="1" step="0.05" value={current.imageOpacity ?? .72} onChange={(e) => set("imageOpacity", Number(e.target.value))} /></label>
       <label className="range-field"><span>Background opacity <output>{Math.round((current.backgroundOpacity ?? 1) * 100)}%</output></span><input type="range" min="0" max="1" step="0.05" value={current.backgroundOpacity ?? 1} onChange={(e) => set("backgroundOpacity", Number(e.target.value))} /></label>
       <label className="range-field full"><span>Heading size <output>{current.fontSize || 48}px</output></span><input type="range" min="24" max="120" step="2" value={current.fontSize || 48} onChange={(e) => set("fontSize", Number(e.target.value))} /></label>
@@ -35,7 +61,7 @@ export function GreetingStyleControls({ value, onChange }) {
   const set = (field, next) => onChange({ ...current, [field]: next });
   return (
     <div className="style-controls greeting-style-controls">
-      <label>Greeting font style<select value={current.fontFamily || "classic"} onChange={(e) => set("fontFamily", e.target.value)}><option value="classic">Classic serif</option><option value="modern">Modern sans</option><option value="romantic">Romantic</option><option value="elegant">Elegant</option></select></label>
+      <FontSelect label="Greeting font style" value={current.fontFamily || "classic"} onChange={(value) => set("fontFamily", value)} />
       <label>Greeting color<span className="color-control"><input type="color" value={current.textColor || "#315c4c"} onChange={(e) => set("textColor", e.target.value)} /><code>{current.textColor || "#315c4c"}</code></span></label>
       <label className="range-field full"><span>Greeting size <output>{current.fontSize || 34}px</output></span><input type="range" min="14" max="80" step="2" value={current.fontSize || 34} onChange={(e) => set("fontSize", Number(e.target.value))} /></label>
     </div>

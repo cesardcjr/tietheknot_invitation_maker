@@ -90,7 +90,7 @@ This follows Cloudinary's recommended [signed browser upload flow](https://cloud
 
 ## Troubleshooting
 
-- **Cloudinary is not configured:** Confirm all three Cloudinary credentials exist on the backend and restart it.
+- **Cloudinary is not configured:** Check the base URL of the failed `POST /api/media/signature` request in the browser's Network panel. Set all three Cloudinary credentials on that backend and restart or redeploy it. For local development, the backend reads `tietheknot_mern_back-end/.env` even when launched from the workspace root. If Studio points at a different backend, update its `VITE_API_URL` and restart the dev server or rebuild the deployed Studio.
 - **Invalid signature:** Confirm the API secret is correct and that the configured preset name exactly matches the signed Cloudinary preset.
 - **Upload blocked by CORS:** Cloudinary uploads go directly to Cloudinary. If the signature request is blocked, add the invitation application's exact origin to `ALLOWED_ORIGINS` on the TieTheKnot backend.
 - **Invitation link opens the wrong domain:** Correct `VITE_PUBLIC_URL`, rebuild the invitation frontend, and regenerate or recopy the link.
