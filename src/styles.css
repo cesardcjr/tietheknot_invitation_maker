@@ -1,4 +1,5 @@
 @import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Great+Vibes&family=Playfair+Display:ital,wght@0,500;0,600;1,500&family=Cormorant+Garamond:wght@500;600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Alex+Brush&family=Allura&family=Baskervville&family=Cinzel&family=Crimson+Text&family=Ephesis&family=Gloock&family=Hedvig+Letters+Serif&family=Instrument+Serif&family=Italiana&family=Marck+Script&family=Old+Standard+TT&family=Parisienne&family=Spectral&family=Young+Serif&display=swap");
 
 :root {
   color: #24312b; background: #f4f6f4; font-family: "DM Sans", system-ui, sans-serif; font-synthesis: none;
@@ -370,6 +371,51 @@ input[type="range"] { min-height: 38px; border: 0; padding: 0; accent-color: var
   margin-bottom: .75rem;
 }
 .venue-map-link { display: inline-flex; margin-top: .75rem; }
+
+.typography-grid, .typography-controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr));
+  gap: .65rem;
+}
+.typography-controls {
+  min-inline-size: 0;
+  margin: 0;
+  padding: .65rem;
+  border: 1px solid var(--line, #dbe2dc);
+  border-radius: .5rem;
+}
+.typography-controls legend { padding-inline: .25rem; font-size: .85rem; }
+.typography-controls label, .typography-controls input, .typography-controls select { min-width: 0; }
+.cover-logo { display: block; width: min(100%, 120px); height: 86px; object-fit: contain; margin: 0 auto 1.4rem; }
+.cover-monogram[aria-hidden="false"] { width: auto; min-width: 66px; max-width: 100%; padding-inline: .6rem; }
+.invitation-story :is(.page-content, .section-inner) { min-width: 0; overflow-wrap: anywhere; }
+.invitation-story :is(.rsvp-form, .preview-rsvp, .venue-card) .button { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+.dress-image-gallery figure { min-width: 0; margin: 0; }
+.dress-image-gallery figcaption, .dress-general-notes { white-space: pre-wrap; overflow-wrap: anywhere; }
+.dress-image-gallery figcaption { margin-top: .45rem; }
+.dress-general-notes { margin: 1rem auto 0; }
+.venue-card .venue-map-link { margin-top: auto; }
+
+@supports (grid-template-rows: subgrid) {
+  @media (min-width: 701px) {
+    .venue-card-grid { row-gap: 0; }
+    .venue-card-grid .venue-card {
+      display: grid;
+      grid-row: span 6;
+      grid-template-rows: subgrid;
+      justify-items: center;
+      align-items: center;
+      justify-content: stretch;
+      row-gap: .35rem;
+    }
+    .venue-card > img { grid-row: 1; }
+    .venue-card > h3 { grid-row: 2; }
+    .venue-card > strong { grid-row: 3; }
+    .venue-card > p { grid-row: 4; }
+    .venue-card > time { grid-row: 5; }
+    .venue-card > .venue-map-link { grid-row: 6; align-self: center; margin-top: .45rem; }
+  }
+}
 .rsvp-lookup { margin: 1rem auto; max-width: 28rem; }
 .rsvp-lookup input { width: 100%; min-height: 44px; }
 .rsvp-suggestions { list-style: none; margin: .3rem 0; padding: 0; }

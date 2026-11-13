@@ -1,5 +1,7 @@
 import mapLocation from "../utils/mapLocation";
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { newPageFont, textStyle } from "../utils/typography";
+import { dressImageNote } from "../utils/dressNotes";
 import Countdown from "./Countdown";
 import { youtubeEmbedUrl } from "../utils/youtube";
 
@@ -54,6 +56,7 @@ export default function InvitationPreview({ design, event, children, preview = f
   const theme = design?.theme || {};
   const assets = design?.assets || {};
   const sections = design?.sections || {};
+  const typography = (key) => textStyle(sections.typography?.[key]);
   const ladies = assets.womenDressImages ?? (assets.womenDressImage ? [assets.womenDressImage] : []);
   const gentlemen = assets.menDressImages ?? (assets.menDressImage ? [assets.menDressImage] : []);
   const videoUrl = youtubeEmbedUrl(content.youtubeUrl);
@@ -110,12 +113,14 @@ export default function InvitationPreview({ design, event, children, preview = f
 
   return (
     <article ref={storyRef} className={`invitation-story font-${theme.fontPair || "classic"}${preview ? " is-preview" : ""}`} style={rootStyle}>
-      <section className={`invitation-page cover-page font-${sections.cover?.fontFamily || "classic"}`} style={pageStyle(sections.cover, assets.coverImage?.secureUrl)}>
+      <section className={`invitation-page cover-page font-${sections.cover?.fontFamily || "classic"}`} style={{ ...pageStyle(sections.cover, assets.coverImage?.secureUrl), fontFamily: newPageFont(sections.cover?.fontFamily) }}>
         <div className="page-layer" />
         <div className={`page-content cover-content${assets.coverCarousel?.length ? " has-carousel" : ""}`}>
-          <div className="cover-copy"><span className="cover-monogram" aria-hidden="true">TTK</span>
+          <div className="cover-copy">{assets.coverLogo?.secureUrl
+            ? <img className="cover-logo" src={assets.coverLogo.secureUrl} alt={assets.coverLogo.alt || "Wedding logo"} />
+            : <span className="cover-monogram" aria-hidden={!content.coverMonogram?.trim()}>{content.coverMonogram?.trim() || "TTK"}</span>}
             <p className="invitation-kicker">{content.headline || "We're getting married"}</p>
-            <h1>{content.coupleNames || "Our Wedding"}</h1>
+            <h1 style={{ fontFamily: newPageFont(sections.cover?.fontFamily) }}>{content.coupleNames || "Our Wedding"}</h1>
             <p className="invitation-date">{formatDate(event?.targetDate)}</p>
             <span className="scroll-cue">Scroll to celebrate <b aria-hidden="true">↓</b></span>
           </div>
@@ -123,48 +128,57 @@ export default function InvitationPreview({ design, event, children, preview = f
         </div>
       </section>
 
-      <section className={`invitation-page welcome-page font-${sections.welcome?.fontFamily || "classic"}`} style={pageStyle(sections.welcome, assets.welcomeImage?.secureUrl)}>
+      <section className={`invitation-page welcome-page font-${sections.welcome?.fontFamily || "classic"}`} style={{ ...pageStyle(sections.welcome, assets.welcomeImage?.secureUrl), fontFamily: newPageFont(sections.welcome?.fontFamily) }}>
         <div className="page-layer" />
         <div className="page-content welcome-content">
           <p className="section-kicker">Counting down to forever</p>
           <Countdown date={event?.targetDate} time={content.ceremonyTime} />
           <div className="ornament" aria-hidden="true">❦</div>
-          <p className={`guest-greeting font-${sections.greeting?.fontFamily || "classic"}`} style={greetingStyle}>{content.welcomeHeadline || "Welcome to our wedding"}</p>
-          <p className="welcome-message">{content.welcomeMessage || "Together with our families, we invite you to celebrate with us."}</p>
+          <p className={`guest-greeting font-${sections.greeting?.fontFamily || "classic"}`} style={{ ...greetingStyle, fontFamily: newPageFont(sections.greeting?.fontFamily) }}>{content.welcomeHeadline || "Welcome to our wedding"}</p>
+          <p className="welcome-message" style={typography("welcomeMessage")}>{content.welcomeMessage || "Together with our families, we invite you to celebrate with us."}</p>
         </div>
       </section>
 
-      {(videoUrl || content.videoMessage) && <section className="story-section video-section"><div className="section-inner"><h2>{content.videoHeading || "A glimpse of our story"}</h2>{content.videoMessage && <p>{content.videoMessage}</p>}{videoUrl && <div className="video-frame"><iframe src={videoUrl} title="A message from the couple" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen /></div>}</div></section>}
+      {(videoUrl || content.videoMessage) && <section className="story-section video-section"><div className="section-inner"><h2>{content.videoHeading || "A glimpse of our story"}</h2>{content.videoMessage && <p style={typography("videoMessage")}>{content.videoMessage}</p>}{videoUrl && <div className="video-frame"><iframe src={videoUrl} title="A message from the couple" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen /></div>}</div></section>}
 
-      <section className="story-section venue-section"><div className="section-inner"><p className="section-kicker">Where to celebrate</p><h2>Wedding Details</h2><div className="venue-card-grid">
+      <section className="story-section venue-section"><div className="section-inner"><p className="section-kicker" style={typography("venueKicker")}>Where to celebrate</p><h2 style={typography("venueHeading")}>Wedding Details</h2><div className="venue-card-grid">
         {[
-          { title: "Wedding Ceremony", name: ceremonyVenue, address: ceremonyAddress, time: content.ceremonyTime, image: assets.ceremonyImage, map: content.ceremonyMap },
-          { title: "Reception", name: receptionVenue, address: receptionAddress, time: content.receptionTime, image: assets.receptionImage, map: content.receptionMap },
-        ].map(({ title, name, address, time, image, map }) => {
+          { key: "ceremony", title: "Wedding Ceremony", name: ceremonyVenue, address: ceremonyAddress, time: content.ceremonyTime, image: assets.ceremonyImage, map: content.ceremonyMap },
+          { key: "reception", title: "Reception", name: receptionVenue, address: receptionAddress, time: content.receptionTime, image: assets.receptionImage, map: content.receptionMap },
+        ].map(({ key, title, name, address, time, image, map }) => {
           const mapUrl = mapLocation(map);
-          return <article className="venue-card venue-photo-card" key={title}>
+          return <article className="venue-card venue-photo-card" key={key}>
             {image?.secureUrl && <img src={image.secureUrl} alt={image.alt || title + " venue"} loading="lazy" />}
-            <h3>{title}</h3><strong>{name || "Venue to be announced"}</strong><p>{address || "Address to follow"}</p>
-            {time && <time dateTime={time}>{formatTime(time)}</time>}
-            {mapUrl && <a className="button secondary venue-map-link" href={mapUrl} target="_blank" rel="noopener noreferrer">View Maps</a>}
+            <h3 style={typography(key + "Heading")}>{title}</h3>
+            <strong style={typography(key + "Venue")}>{name || "Venue to be announced"}</strong>
+            <p style={typography(key + "Address")}>{address || "Address to follow"}</p>
+            {time && <time dateTime={time} style={typography(key + "Time")}>{formatTime(time)}</time>}
+            {mapUrl && <a className="button secondary venue-map-link" style={typography(key + "MapLabel")} href={mapUrl} target="_blank" rel="noopener noreferrer">View Maps</a>}
           </article>;
         })}
       </div></div></section>
 
       <section className="story-section dress-section"><div className="section-inner">
-        <h2>{content.dressHeading || "Celebrate in Style"}</h2>
-        {content.dressCode && <p className="dress-intro">{content.dressCode}</p>}
+        <h2 style={typography("dressHeading")}>{content.dressHeading || "Celebrate in Style"}</h2>
+        {content.dressCode && <p className="dress-intro" style={typography("dressCode")}>{content.dressCode}</p>}
         <div className={"dress-card-grid" + (Math.max(ladies.length, gentlemen.length) > 1 ? " dress-card-grid-stacked" : "")}>
           {[
-            { label: "Ladies", images: ladies, guidance: content.dressCodeWomen, colors: content.womenColors },
-            { label: "Gentlemen", images: gentlemen, guidance: content.dressCodeMen, colors: content.menColors },
-          ].map(({ label, images, guidance, colors }) => <article className="dress-card" key={label}>
-            <div><h3>{label}</h3><p>{guidance || "Formal attire"}</p><Palette colors={colors} /></div>
+            { key: "women", label: "Ladies", images: ladies, guidance: content.dressCodeWomen, colors: content.womenColors },
+            { key: "men", label: "Gentlemen", images: gentlemen, guidance: content.dressCodeMen, colors: content.menColors },
+          ].map(({ key, label, images, guidance, colors }) => <article className="dress-card" key={label}>
+            <div><h3 style={typography(key + "DressHeading")}>{label}</h3><p style={typography(key === "women" ? "dressCodeWomen" : "dressCodeMen")}>{guidance || "Formal attire"}</p><Palette colors={colors} /></div>
             {images.length > 0 && <div className="dress-image-gallery">
-              {images.map((image, index) => <img key={image.publicId || index} src={image.secureUrl} alt={image.alt || label + " dress code reference " + (index + 1)} loading="lazy" />)}
+              {images.map((image, index) => {
+                const note = dressImageNote(image);
+                return <figure key={image.publicId || index}>
+                  <img src={image.secureUrl} alt={image.alt || label + " dress code reference " + (index + 1)} loading="lazy" />
+                  {note && <figcaption style={typography("dressFooterNotes")}>{note}</figcaption>}
+                </figure>;
+              })}
             </div>}
           </article>)}
         </div>
+        {content.dressGeneralNotes?.trim() && <p className="dress-general-notes" style={typography("dressGeneralNotes")}>{content.dressGeneralNotes}</p>}
       </div></section>
 
       <section className="story-section seating-notice"><div className="section-inner">
@@ -176,7 +190,7 @@ export default function InvitationPreview({ design, event, children, preview = f
 
       <section className={`invitation-page closing-page font-${sections.closing?.fontFamily || "classic"}`} style={pageStyle(sections.closing, assets.closingImage?.secureUrl)}>
         <div className="page-layer" />
-        <div className="page-content closing-content"><span className="closing-mark" aria-hidden="true">∞</span><h2>{content.closingMessage || "Thank you for being part of our story."}</h2>{content.contactMessage && <p>{content.contactMessage}</p>}<strong>{content.coupleNames || "With love"}</strong></div>
+        <div className="page-content closing-content"><span className="closing-mark" aria-hidden="true">∞</span><h2 style={{ fontFamily: newPageFont(sections.closing?.fontFamily), ...typography("closingMessage") }}>{content.closingMessage || "Thank you for being part of our story."}</h2>{content.contactMessage && <p>{content.contactMessage}</p>}<strong>{content.coupleNames || "With love"}</strong></div>
       </section>
     </article>
   );
