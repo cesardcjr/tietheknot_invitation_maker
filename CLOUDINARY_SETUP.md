@@ -38,6 +38,9 @@ ALLOWED_ORIGINS=https://planner.example.com,https://invite.example.com
 
 Important:
 
+- Render can also use a single server-side `CLOUDINARY_URL` connection string. The three individual variables take precedence when all are present.
+- In production, verify the backend repository's release has been merged to `main` and Render shows it as Live. In Vercel, the Studio's production `VITE_API_URL` must point to that Render service and end in `/api`.
+
 - Add these values to the backend only.
 - Never create a `VITE_CLOUDINARY_API_SECRET` variable.
 - Never commit the real `.env` file.

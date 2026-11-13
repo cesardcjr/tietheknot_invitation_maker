@@ -2,7 +2,7 @@ import RsvpInbox from "./RsvpInbox";
 import React, { useEffect, useState } from "react";
 import mapLocation from "../utils/mapLocation";
 import InvitationPreview from "../components/InvitationPreview";
-import { CarouselUploadField, GreetingStyleControls, ImageUploadField, PaletteEditor, SectionStyleControls, TypographyControls } from "../components/DesignControls";
+import { CarouselUploadField, ImageUploadField, PaletteEditor, SectionStyleControls, TypographyControls } from "../components/DesignControls";
 import { invitations, PLANNER_URL, PUBLIC_URL, uploadToCloudinary } from "../api";
 import { RsvpTitle, RsvpSubmit } from "../components/RsvpCopy";
 import { dressImageNote } from "../utils/dressNotes";
@@ -61,7 +61,7 @@ function mergeDesign(value) {
   };
 }
 
-const friendlyError = (err) => err.response?.data?.message || err.response?.data?.error?.message || "Something went wrong. Please try again.";
+const friendlyError = (err) => err.response?.data?.message || err.response?.data?.error?.message || err.message || "Something went wrong. Please try again.";
 
 export default function Builder({ session, onLogout }) {
   const [data, setData] = useState(null);
@@ -152,29 +152,40 @@ export default function Builder({ session, onLogout }) {
     setNotice({ type: "success", text: "Image removed from the draft. Save to confirm." });
   };
 
-  const uploadCarousel = async (event) => {
-    const available = Math.max(0, 8 - (design.assets?.coverCarousel?.length || 0));
+  const uploadCarousel = async (event, replaceIndex) => {
+    const currentImages = design.assets.coverCarousel || [];
+    const available = replaceIndex === undefined ? 8 - currentImages.length : 1;
     const files = [...(event.target.files || [])].slice(0, available);
     event.target.value = "";
-    if (!files.length) return;
-    if (files.some((file) => !file.type.startsWith("image/") || file.size > 8 * 1024 * 1024)) {
-      return setNotice({ type: "error", text: "Use JPG, PNG, WebP or AVIF images no larger than 8 MB each." });
+    if (!files.length || busy) return;
+    if (files.some((file) => !/^image\/(jpeg|png|webp|avif)$/.test(file.type) || file.size > 8 * 1024 * 1024)) {
+      return setNotice({ type: "error", text: "Use JPG, PNG, WebP or AVIF images up to 8 MB." });
     }
     setBusy("upload-cover-carousel"); setNotice(null);
+    const uploaded = [];
+    const discarded = [];
+    let error;
     try {
-      const uploaded = [];
-      const rejected = [];
       for (const file of files) {
         const asset = await uploadToCloudinary(file);
-        asset.alt = `Wedding carousel image ${(design.assets?.coverCarousel?.length || 0) + uploaded.length + 1}`;
-        if (asset.width < asset.height * 1.2) rejected.push(asset.publicId);
-        else uploaded.push(asset);
+        if (asset.width < asset.height * 1.2) discarded.push(asset.publicId);
+        else {
+          const slide = replaceIndex ?? currentImages.length + uploaded.length;
+          uploaded.push({ ...asset, alt: "Wedding carousel image " + (slide + 1) });
+        }
       }
-      if (rejected.length) setPendingDeletes((items) => [...new Set([...items, ...rejected])]);
-      if (uploaded.length) setDesign((current) => ({ ...current, assets: { ...current.assets, coverCarousel: [...(current.assets?.coverCarousel || []), ...uploaded].slice(0, 8) } }));
-      setNotice({ type: rejected.length ? "error" : "success", text: rejected.length ? `${rejected.length} image${rejected.length === 1 ? " was" : "s were"} skipped because carousel images must be landscape.` : `${uploaded.length} carousel image${uploaded.length === 1 ? "" : "s"} uploaded. Save the design to confirm.` });
-    } catch (err) { setNotice({ type: "error", text: friendlyError(err) }); }
-    finally { setBusy(""); }
+    } catch (err) { error = friendlyError(err); }
+    if (uploaded.length) {
+      const next = replaceIndex === undefined ? [...currentImages, ...uploaded] : currentImages.map((image, index) => index === replaceIndex ? uploaded[0] : image);
+      const previous = currentImages[replaceIndex]?.publicId;
+      if (previous) discarded.push(previous);
+      setDesign((current) => ({ ...current, assets: { ...current.assets, coverCarousel: next } }));
+    }
+    if (discarded.length) setPendingDeletes((items) => [...new Set([...items, ...discarded])]);
+    const skipped = discarded.length > Number(Boolean(uploaded.length && currentImages[replaceIndex]?.publicId));
+    const saved = uploaded.length ? " Save the design to keep your changes." : "";
+    setNotice({ type: error || skipped ? "error" : "success", text: (error || (skipped ? "Choose landscape images for the carousel." : replaceIndex === undefined ? "Slides added." : "Slide replaced.")) + saved });
+    setBusy("");
   };
 
   const removeCarouselImage = (index) => {
@@ -190,9 +201,7 @@ export default function Builder({ session, onLogout }) {
     catch { window.prompt(message, value); }
   };
   const pageTitle = active === "design" ? "Invitation Design" : active === "guests" ? "Guest RSVP" : "Publishing";
-  const imageField = (assetKey, label) => <ImageUploadField id={"upload-" + assetKey} label={label} asset={design.assets?.[assetKey]} busy={busy === "upload-" + assetKey} onUpload={(event) => uploadAsset(assetKey, label, event)} onRemove={() => removeAsset(assetKey)} />;
-  const headingField = (key, label, fallback) => <label>{label}<input maxLength={160} placeholder={fallback} value={design.content[key]} onChange={(event) => setContent(key, event.target.value)} /></label>;
-
+  const imageField = (assetKey, label) => <ImageUploadField id={"upload-" + assetKey} label={label} asset={design.assets?.[assetKey]} busy={busy === "upload-" + assetKey} disabled={Boolean(busy)} onUpload={(event) => uploadAsset(assetKey, label, event)} onRemove={() => removeAsset(assetKey)} />;
   const typographyField = (key, label) => <TypographyControls key={key} label={label}
     value={design.sections.typography?.[key]}
     onChange={(value) => setDesign((current) => ({
@@ -220,6 +229,7 @@ export default function Builder({ session, onLogout }) {
         const asset = await uploadToCloudinary(file);
         asset.alt = images[index]?.alt || label + " dress code reference " + (index + 1);
         asset.footerNote = images[index] ? dressImageNote(images[index]) : "";
+        asset.footerStyle = images[index]?.footerStyle;
         const previous = images[index]?.publicId;
         if (previous) setPendingDeletes((items) => [...items, previous]);
         update(index === images.length ? [...images, asset] : images.map((item, i) => i === index ? asset : item));
@@ -238,7 +248,9 @@ export default function Builder({ session, onLogout }) {
             if (image.publicId) setPendingDeletes((items) => [...items, image.publicId]);
             update(images.filter((item, i) => i !== index));
           }} />
-        <label>Footer Notes<input maxLength={300} value={dressImageNote(image)} onChange={(event) => update(images.map((item, i) => i === index ? { ...item, footerNote: event.target.value } : item))} /></label>
+        <label>Footer notes<input maxLength={300} value={dressImageNote(image)} onChange={(event) => update(images.map((item, i) => i === index ? { ...item, footerNote: event.target.value } : item))} /></label>
+        <TypographyControls label="Photo footer notes" value={image.footerStyle}
+          onChange={(footerStyle) => update(images.map((item, i) => i === index ? { ...item, footerStyle } : item))} />
         <label>Image alt text<input maxLength={300} value={image.alt || ""} onChange={(event) => update(images.map((item, i) => i === index ? { ...item, footerNote: dressImageNote(item), alt: event.target.value } : item))} /></label>
         <div className="card-actions">
           <button className="button secondary" disabled={Boolean(busy) || index === 0} onClick={() => move(index, -1)}>Move earlier</button>
@@ -253,67 +265,122 @@ export default function Builder({ session, onLogout }) {
     const href = mapLocation(design.content[map]);
     return <div className="form-section" key={key}>
       <h3>{label}</h3>
-      <div className="field-grid">
-        {["Venue", "Time", "Address"].map((field) => <label key={field}>{field}<input type={field === "Time" ? "time" : "text"} value={design.content[key + field]} onChange={(event) => setContent(key + field, event.target.value)} /></label>)}
-        <label className="full">Google Maps pin link or coordinates<input maxLength={2048} value={design.content[map]} placeholder="Google Maps link or latitude, longitude" onChange={(event) => setContent(map, event.target.value)} /></label>
-      </div>
+      {typographyField(key + "Heading", "Card heading")}
+      {textField(key + "Venue", "Venue name", { maxLength: 300 })}
+      {textField(key + "Address", "Address", { maxLength: 500, rows: 2 })}
+      {textField(key + "Time", "Time", { type: "time" })}
+      <label>Google Maps link or coordinates<input maxLength={2048} value={design.content[map]} onChange={(event) => setContent(map, event.target.value)} /></label>
       {href ? <a href={href} target="_blank" rel="noopener noreferrer">Preview map pin</a> : design.content[map] && <p className="inline-error">Enter a valid Google Maps link or coordinates.</p>}
+      {typographyField(key + "MapLabel", "Map button")}
       {imageField(key + "Image", label + " venue photo")}
-      <div className="typography-grid">
-        {[["Heading", "Card heading"], ["Venue", "Venue name"], ["Address", "Address"], ["Time", "Time"], ["MapLabel", "Map button"]]
-          .map(([field, title]) => typographyField(key + field, title))}
-      </div>
     </div>;
   };
 
+
+  const textField = (key, label, { placeholder, maxLength = 160, rows, type = "text" } = {}) => {
+    const props = {
+      value: design.content[key] || "",
+      placeholder, maxLength,
+      onChange: (event) => setContent(key, event.target.value),
+    };
+    return <div className="styled-field">
+      <label>{label}{rows ? <textarea rows={rows} {...props} /> : <input type={type} {...props} />}</label>
+      {typographyField(key, label)}
+    </div>;
+  };
+
+  const pageAppearance = (key, children) => <details className="form-section page-appearance">
+    <summary>Page appearance</summary>
+    <SectionStyleControls value={design.sections[key]} onChange={(value) => setSectionStyle(key, value)} />
+    {children}
+  </details>;
+
   const editorFields = () => {
-    if (designSection === "cover") return <><div className="form-section"><h3>Cover content</h3><div className="field-grid"><label>Couple names<input value={design.content.coupleNames} maxLength="160" onChange={(e) => setContent("coupleNames", e.target.value)} /></label><label>Headline<input value={design.content.headline} maxLength="200" onChange={(e) => setContent("headline", e.target.value)} /></label></div></div><div className="form-section"><h3>Cover media</h3><label>Cover monogram<input maxLength={12} placeholder="TTK" value={design.content.coverMonogram || ""} onChange={(event) => setContent("coverMonogram", event.target.value)} /></label>{imageField("coverLogo", "Cover logo")}<div className="cover-media-grid"><div>{imageField("coverImage", "Wedding cover image")}</div><CarouselUploadField images={design.assets?.coverCarousel || []} busy={busy === "upload-cover-carousel"} onUpload={uploadCarousel} onRemove={removeCarouselImage} /></div></div><div className="form-section"><h3>Page appearance</h3><SectionStyleControls value={design.sections.cover} onChange={(value) => setSectionStyle("cover", value)} /><div className="theme-grid brand-colors"><label>Accent color<span className="color-control"><input type="color" value={design.theme.accent} onChange={(e) => setTheme("accent", e.target.value)} /><code>{design.theme.accent}</code></span></label><label>Text color<span className="color-control"><input type="color" value={design.theme.text} onChange={(e) => setTheme("text", e.target.value)} /><code>{design.theme.text}</code></span></label></div></div></>;
-    if (designSection === "welcome") return <><div className="form-section"><h3>Second-page image</h3>{imageField("welcomeImage", "Welcome page image")}</div><div className="form-section"><h3>Welcome message</h3><label>Message<textarea rows="6" value={design.content.welcomeMessage} onChange={(e) => setContent("welcomeMessage", e.target.value)} /></label>{typographyField("welcomeMessage", "Message typography")}<p className="field-hint">The live countdown above this message uses the wedding date from your Planner event.</p></div><div className="form-section"><h3>Welcome greeting</h3>{headingField("welcomeHeadline", "Welcome headline", "Welcome to our wedding")}<GreetingStyleControls value={design.sections.greeting} onChange={(value) => setSectionStyle("greeting", value)} /></div><div className="form-section"><h3>Page appearance</h3><SectionStyleControls value={design.sections.welcome} onChange={(value) => setSectionStyle("welcome", value)} /></div></>;
-    if (designSection === "video") return <div className="form-section no-border"><h3>Video message</h3><div className="field-stack">{headingField("videoHeading", "Video headline", "A glimpse of our story")}<label>Optional message above the video<textarea rows="4" value={design.content.videoMessage} onChange={(e) => setContent("videoMessage", e.target.value)} /></label>{typographyField("videoMessage", "Message typography")}<label>YouTube link<input type="url" placeholder="https://www.youtube.com/watch?v=…" value={design.content.youtubeUrl} onChange={(e) => setContent("youtubeUrl", e.target.value)} /><small>Supports YouTube watch, Shorts, embed, and youtu.be links.</small></label>{design.content.youtubeUrl && !youtubeEmbedUrl(design.content.youtubeUrl) && <p className="inline-error">This does not look like a supported YouTube link.</p>}</div></div>;
+    if (designSection === "cover") return <>
+      <div className="form-section">
+        <h3>Cover text</h3>
+        {textField("coupleNames", "Couple names")}
+        {textField("headline", "Headline", { maxLength: 200 })}
+        {textField("coverDateText", "Cover date", { placeholder: "Uses the Planner wedding date" })}
+        <p className="field-hint">Leave the cover date blank to use the Planner date. The countdown always uses the Planner event.</p>
+        {textField("coverMonogram", "Cover monogram", { placeholder: "TTK", maxLength: 12 })}
+        {typographyField("coverScrollCue", "Scroll prompt")}
+      </div>
+      <div className="form-section">
+        <h3>Cover media</h3>
+        {imageField("coverLogo", "Cover logo")}
+        {imageField("coverImage", "Wedding cover image")}
+        <CarouselUploadField images={design.assets.coverCarousel || []} busy={busy === "upload-cover-carousel"}
+          disabled={Boolean(busy)} onUpload={uploadCarousel} onReplace={uploadCarousel} onRemove={removeCarouselImage} />
+      </div>
+      {pageAppearance("cover", <div className="theme-grid">
+        {[["accent", "Accent color"], ["text", "Text color"]].map(([key, label]) => <label key={key}>{label}
+          <span className="color-control"><input type="color" value={design.theme[key]} onChange={(event) => setTheme(key, event.target.value)} /><code>{design.theme[key]}</code></span>
+        </label>)}
+      </div>)}
+    </>;
+    if (designSection === "welcome") return <>
+      <div className="form-section"><h3>Welcome text</h3>
+        {textField("welcomeHeadline", "Greeting", { placeholder: "Welcome to our wedding" })}
+        {textField("welcomeMessage", "Message", { rows: 4, maxLength: 2000 })}
+        {typographyField("welcomeKicker", "Countdown heading")}
+      </div>
+      <div className="form-section"><h3>Welcome media</h3>{imageField("welcomeImage", "Welcome image")}</div>
+      {pageAppearance("welcome")}
+    </>;
+    if (designSection === "video") return <div className="form-section">
+      <h3>Video text and link</h3>
+      {textField("videoHeading", "Title", { placeholder: "A glimpse of our story" })}
+      {textField("videoMessage", "Message", { rows: 3, maxLength: 1000 })}
+      <label>YouTube link<input type="url" value={design.content.youtubeUrl} onChange={(event) => setContent("youtubeUrl", event.target.value)} /></label>
+      {design.content.youtubeUrl && !youtubeEmbedUrl(design.content.youtubeUrl) && <p className="inline-error">Enter a supported YouTube link.</p>}
+    </div>;
     if (designSection === "venue") return <>
-      <div className="form-section"><h3>Venue section</h3><div className="typography-grid">
+      <div className="form-section"><h3>Venue section</h3>
         {typographyField("venueKicker", "Section introduction")}
         {typographyField("venueHeading", "Section heading")}
-      </div></div>
+      </div>
       {venueFields("ceremony", "Wedding Ceremony")}{venueFields("reception", "Reception")}
     </>;
     if (designSection === "dress") return <>
-      <div className="form-section"><h3>Dress code</h3>{headingField("dressHeading", "Section title", "Celebrate in Style")}
-        <label>General Notes<textarea rows={3} maxLength={1000} value={design.content.dressGeneralNotes || ""} onChange={(event) => setContent("dressGeneralNotes", event.target.value)} /></label>
-        <div className="typography-grid">
-          {typographyField("dressHeading", "Section title")}
-          {typographyField("dressCode", "General guidance")}
-          {typographyField("dressFooterNotes", "Image footer notes")}
-          {typographyField("dressGeneralNotes", "General notes")}
-        </div>
-        <label>General guidance<input value={design.content.dressCode} onChange={(event) => setContent("dressCode", event.target.value)} /></label>
+      <div className="form-section"><h3>Dress code</h3>
+        {textField("dressHeading", "Section title", { placeholder: "Celebrate in Style" })}
+        {textField("dressCode", "General guidance", { rows: 2, maxLength: 300 })}
+        {textField("dressGeneralNotes", "General notes", { rows: 3, maxLength: 1000 })}
+        {typographyField("dressFooterNotes", "Default image footer notes")}
       </div>
       {[
         { label: "Ladies", key: "women", guidance: "dressCodeWomen" },
         { label: "Gentlemen", key: "men", guidance: "dressCodeMen" },
       ].map(({ label, key, guidance }) => <div className="form-section" key={key}>
-        <h3>{label}</h3>{galleryField(key + "DressImages", label)}
-        <label>Attire guidance<textarea rows="4" value={design.content[guidance]} onChange={(event) => setContent(guidance, event.target.value)} /></label>
-        <div className="typography-grid">
-          {typographyField(key + "DressHeading", "Attire heading")}
-          {typographyField(guidance, "Attire guidance")}
-        </div>
+        <h3>{label}</h3>
+        {typographyField(key + "DressHeading", "Attire heading")}
+        {textField(guidance, "Attire guidance", { rows: 3, maxLength: 1000 })}
         <PaletteEditor label="Suggested colors" colors={design.content[key + "Colors"]} onChange={(colors) => setContent(key + "Colors", colors)} />
+        {galleryField(key + "DressImages", label)}
       </div>)}
     </>;
-    if (designSection === "rsvp") return <div className="form-section no-border">
-      <h3>Guest response and seating</h3>
-      {headingField("seatingHeading", "Seating section title", "Seating Information")}
-      <label>RSVP title<input maxLength={160} placeholder="Will you celebrate with us?" value={design.content.rsvpTitle || ""} onChange={(event) => setContent("rsvpTitle", event.target.value)} /></label>
-      <label>Submit button text<input maxLength={80} placeholder="Send response" value={design.content.rsvpButtonText || ""} onChange={(event) => setContent("rsvpButtonText", event.target.value)} /></label>
-      <div className="typography-grid">
-        {typographyField("rsvpTitle", "RSVP title")}
-        {typographyField("rsvpButtonText", "Submit button")}
+    if (designSection === "rsvp") return <>
+      <div className="form-section"><h3>RSVP form</h3>
+        {textField("rsvpTitle", "RSVP title", { placeholder: "Will you celebrate with us?" })}
+        {textField("rsvpButtonText", "Submit button", { placeholder: "Send response", maxLength: 80 })}
       </div>
-      <p>Guests enter their full name and response. Review submissions and update the Guest List in Guest RSVP. Seating assignments are provided at the venue.</p>
-    </div>;
-    return <><div className="form-section"><h3>Closing image</h3>{imageField("closingImage", "Closing page image")}</div><div className="form-section"><h3>Final message</h3><div className="field-stack"><label>Closing message<textarea rows="5" value={design.content.closingMessage} onChange={(e) => setContent("closingMessage", e.target.value)} /></label>{typographyField("closingMessage", "Message typography")}<label>Contact note<input value={design.content.contactMessage} onChange={(e) => setContent("contactMessage", e.target.value)} /></label></div></div><div className="form-section"><h3>Page appearance</h3><SectionStyleControls value={design.sections.closing} onChange={(value) => setSectionStyle("closing", value)} /></div></>;
+      <div className="form-section"><h3>Seating information</h3>
+        {textField("seatingHeading", "Seating title", { placeholder: "Seating Information" })}
+        {typographyField("seatingBody", "Seating message")}
+      </div>
+    </>;
+    return <>
+      <div className="form-section"><h3>Closing text</h3>
+        {textField("closingMessage", "Final message", { rows: 4, maxLength: 2000 })}
+        {textField("contactMessage", "Contact note", { rows: 2, maxLength: 500 })}
+        {typographyField("closingSignature", "Couple signature")}
+      </div>
+      <div className="form-section"><h3>Closing media</h3>{imageField("closingImage", "Closing image")}</div>
+      {pageAppearance("closing")}
+    </>;
   };
+
 
   if (busy === "loading" && !data) return <div className="app-loading"><span className="spinner" /> Loading Invitation Studio…</div>;
   if (!data) return <div className="app-loading"><button className="button primary" onClick={load}>Try again</button></div>;
