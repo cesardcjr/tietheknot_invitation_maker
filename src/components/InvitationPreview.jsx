@@ -3,6 +3,7 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { newPageFont, textStyle } from "../utils/typography";
 import { dressImageNote } from "../utils/dressNotes";
 import Countdown from "./Countdown";
+import SeatingMessage from "./SeatingMessage";
 import { youtubeEmbedUrl } from "../utils/youtube";
 
 function formatDate(value) {
@@ -166,7 +167,10 @@ export default function InvitationPreview({ design, event, children, preview = f
             { key: "women", label: "Ladies", images: ladies, guidance: content.dressCodeWomen, colors: content.womenColors },
             { key: "men", label: "Gentlemen", images: gentlemen, guidance: content.dressCodeMen, colors: content.menColors },
           ].map(({ key, label, images, guidance, colors }) => <article className="dress-card" key={label}>
-            <div><h3 style={typography(key + "DressHeading")}>{label}</h3><p style={typography(key === "women" ? "dressCodeWomen" : "dressCodeMen")}>{guidance || "Formal attire"}</p><Palette colors={colors} /></div>
+            <div className="dress-card-heading"><h3 style={typography(key + "DressHeading")}>{label}</h3>
+              {guidance?.trim() && !/^formal attire[.!]?$/i.test(guidance.trim()) &&
+                <p style={typography(key === "women" ? "dressCodeWomen" : "dressCodeMen")}>{guidance}</p>}
+              <Palette colors={colors} /></div>
             {images.length > 0 && <div className="dress-image-gallery">
               {images.map((image, index) => {
                 const note = dressImageNote(image);
@@ -181,10 +185,10 @@ export default function InvitationPreview({ design, event, children, preview = f
         {content.dressGeneralNotes?.trim() && <p className="dress-general-notes" style={typography("dressGeneralNotes")}>{content.dressGeneralNotes}</p>}
       </div></section>
 
-      <section className="story-section seating-notice"><div className="section-inner">
+      {content.showSeating !== false && <section className="story-section seating-notice"><div className="section-inner">
         <h2 style={typography("seatingHeading")}>{content.seatingHeading || "Seating Information"}</h2>
-        <p style={typography("seatingBody")}>Your seat assignment will be provided at the venue.</p>
-      </div></section>
+        <p style={typography("seatingBody")}><SeatingMessage message={content.seatingMessage} seats={content.reservedSeats} /></p>
+      </div></section>}
 
       {children}
 

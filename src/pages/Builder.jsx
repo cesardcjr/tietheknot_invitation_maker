@@ -98,6 +98,15 @@ export default function Builder({ session, onLogout }) {
   };
 
   const saveDesign = async (nextDesign = design) => {
+    const seats = nextDesign.content.reservedSeats;
+    if (seats != null && (!Number.isInteger(seats) || seats < 1 || seats > 999)) {
+      setDesignSection("rsvp");
+      return setNotice({ type: "error", text: "Enter a whole reserved seat count between 1 and 999, or leave it empty." });
+    }
+    if (nextDesign.content.showSeating !== false && nextDesign.content.seatingMessage?.includes("{seats}") && seats == null) {
+      setDesignSection("rsvp");
+      return setNotice({ type: "error", text: "Enter a reserved seat count for the {seats} placeholder." });
+    }
     if (nextDesign.content.youtubeUrl && !youtubeEmbedUrl(nextDesign.content.youtubeUrl)) {
       setDesignSection("video");
       return setNotice({ type: "error", text: "Enter a valid YouTube watch, short, or share link." });
@@ -362,11 +371,28 @@ export default function Builder({ session, onLogout }) {
     </>;
     if (designSection === "rsvp") return <>
       <div className="form-section"><h3>RSVP form</h3>
+        <label className="visibility-toggle"><input type="checkbox" checked={design.content.showRsvp !== false}
+          onChange={(event) => setContent("showRsvp", event.target.checked)} />Show RSVP form</label>
         {textField("rsvpTitle", "RSVP title", { placeholder: "Will you celebrate with us?" })}
         {textField("rsvpButtonText", "Submit button", { placeholder: "Send response", maxLength: 80 })}
       </div>
       <div className="form-section"><h3>Seating information</h3>
+        <label className="visibility-toggle"><input type="checkbox" checked={design.content.showSeating !== false}
+          onChange={(event) => setContent("showSeating", event.target.checked)} />Show seating information</label>
         {textField("seatingHeading", "Seating title", { placeholder: "Seating Information" })}
+        <div className="styled-field">
+          <label>Seating message<textarea rows={3} maxLength={2000}
+            placeholder="Your seat assignment will be provided at the venue."
+            value={design.content.seatingMessage ?? ""}
+            onChange={(event) => setContent("seatingMessage", event.target.value)} /></label>
+          <p className="field-hint">Use { "{seats}" } where the reserved seat count should appear, for example “We have reserved { "{seats}" } seats for you.”</p>
+          <button type="button" className="button secondary" onClick={() => setContent("seatingMessage", "We have reserved {seats} seats for you.")}>Use seat reservation message</button>
+          <label>Reserved seats (optional)<input type="number" min={1} max={999} step={1}
+            value={design.content.reservedSeats ?? ""} onChange={(event) => {
+              const value = event.target.valueAsNumber;
+              setContent("reservedSeats", Number.isFinite(value) ? value : undefined);
+            }} /></label>
+        </div>
         {typographyField("seatingBody", "Seating message")}
       </div>
     </>;
@@ -399,7 +425,7 @@ export default function Builder({ session, onLogout }) {
         <header className="studio-topbar"><button className="studio-menu" aria-label="Open navigation" aria-expanded={sidebarOpen} onClick={() => setSidebarOpen(true)}>☰</button><div><p className="eyebrow">TieTheKnot PH</p><h1>{pageTitle}</h1></div><div className="topbar-actions">{active === "design" && <button className="button primary" disabled={Boolean(busy)} onClick={() => saveDesign()}>{busy === "design" ? "Saving…" : "Save design"}</button>}</div></header>
         {notice && <div className={`notice ${notice.type}`} role="status"><span>{notice.text}</span><button aria-label="Dismiss message" onClick={() => setNotice(null)}>×</button></div>}
 
-        {active === "design" && <main className="design-page"><div className="design-section-nav" aria-label="Design sections">{DESIGN_SECTIONS.map(([key, label, detail]) => <button key={key} className={designSection === key ? "active" : ""} onClick={() => setDesignSection(key)}><span>{label}</span><small>{detail}</small></button>)}</div><div className="design-workspace"><section className="editor-panel" aria-labelledby="editor-title"><div className="editor-title"><p className="eyebrow">Customize section</p><h2 id="editor-title">{DESIGN_SECTIONS.find(([key]) => key === designSection)?.[1]}</h2></div>{editorFields()}</section><aside className="preview-panel"><div className="preview-label"><span>Live preview</span><small>Scroll all pages</small></div><InvitationPreview preview design={design} event={data.event}><section className="preview-rsvp"><div className="reveal-item"><p className="section-kicker">Kindly respond</p><RsvpTitle design={design} /><label className="public-field">Full Name<input disabled placeholder="Enter your full name" /></label><div><button disabled>Accept</button><button disabled>Decline</button></div><RsvpSubmit design={design} disabled /></div></section></InvitationPreview></aside></div></main>}
+        {active === "design" && <main className="design-page"><div className="design-section-nav" aria-label="Design sections">{DESIGN_SECTIONS.map(([key, label, detail]) => <button key={key} className={designSection === key ? "active" : ""} onClick={() => setDesignSection(key)}><span>{label}</span><small>{detail}</small></button>)}</div><div className="design-workspace"><section className="editor-panel" aria-labelledby="editor-title"><div className="editor-title"><p className="eyebrow">Customize section</p><h2 id="editor-title">{DESIGN_SECTIONS.find(([key]) => key === designSection)?.[1]}</h2></div>{editorFields()}</section><aside className="preview-panel"><div className="preview-label"><span>Live preview</span><small>Scroll all pages</small></div><InvitationPreview preview design={design} event={data.event}>{design.content.showRsvp !== false && <section className="preview-rsvp"><div className="reveal-item"><p className="section-kicker">Kindly respond</p><RsvpTitle design={design} /><label className="public-field">Full Name<input disabled placeholder="Enter your full name" /></label><div><button disabled>Accept</button><button disabled>Decline</button></div><RsvpSubmit design={design} disabled /></div></section>}</InvitationPreview></aside></div></main>}
 
         {active === "guests" && <RsvpInbox guests={data.guests} onGuestUpdated={(updated) =>
           setData((current) => ({ ...current, guests: current.guests.map((guest) => guest._id === updated._id ? updated : guest) }))
