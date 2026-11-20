@@ -54,7 +54,7 @@ export default function PublicInvitation({ sharedKey, token }) {
 
   return <main className="public-page">
     <InvitationPreview design={data.design} event={data.event}>
-      <section className="story-section rsvp-story-section" id="rsvp" aria-labelledby="rsvp-title"><div className="section-inner">
+      {data.design?.content?.showRsvp !== false && <section className="story-section rsvp-story-section" id="rsvp" aria-labelledby="rsvp-title"><div className="section-inner">
         <form className="rsvp-form" onSubmit={submit}>
           <p className="section-kicker">Kindly respond</p>
           <RsvpTitle id="rsvp-title" design={data.design} />
@@ -73,7 +73,7 @@ export default function PublicInvitation({ sharedKey, token }) {
             {error && <p className="form-error" role="alert">{error}</p>}
           </>}
         </form>
-      </div></section>
+      </div></section>}
     </InvitationPreview>
     <footer className="public-footer">Created with TieTheKnot PH</footer>
   </main>;
